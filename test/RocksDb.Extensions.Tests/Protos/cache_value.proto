@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+message CacheValue {
+  int32 id = 1;
+  string value = 2;
+  bytes payload = 3;
+}

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf.Tools" Version="3.21.9" />
+        <PackageReference Include="Grpc.Tools" Version="2.50.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
+        <PackageReference Include="NUnit" Version="3.13.3" />
+        <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
+        <PackageReference Include="NUnit.Analyzers" Version="3.3.0" />
+        <PackageReference Include="coverlet.collector" Version="3.1.2" />
+        <PackageReference Include="Shouldly" Version="4.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Protobuf Include="**/*.proto" GrpcServices="None" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\RocksDb.Extensions.ProtoBufNet\RocksDb.Extensions.ProtoBufNet.csproj" />
+      <ProjectReference Include="..\..\src\RocksDb.Extensions.Protobuf\RocksDb.Extensions.Protobuf.csproj" />
+      <ProjectReference Include="..\..\src\RocksDb.Extensions.System.Text.Json\RocksDb.Extensions.System.Text.Json.csproj" />
+      <ProjectReference Include="..\..\src\RocksDb.Extensions\RocksDb.Extensions.csproj" />
+    </ItemGroup>
+    
+</Project>

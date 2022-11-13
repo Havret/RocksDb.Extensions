@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Google.Protobuf.Tools" Version="3.21.9" />
+      <PackageReference Include="Grpc.Tools" Version="2.50.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="BenchmarkDotNet" Version="0.13.2" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
+    </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="**/*.proto" GrpcServices="None" />
+  </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\RocksDb.Extensions.Protobuf\RocksDb.Extensions.Protobuf.csproj" />
+      <ProjectReference Include="..\..\src\RocksDb.Extensions\RocksDb.Extensions.csproj" />
+    </ItemGroup>
+
+</Project>
