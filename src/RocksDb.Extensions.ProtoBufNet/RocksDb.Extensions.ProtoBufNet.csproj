@@ -1,10 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <Summary>An opinionated integration of RocksDB with .NET dependency injection system.</Summary>
+        <Description>An opinionated integration of RocksDB with .NET dependency injection system.</Description>
         <TargetFramework>netstandard2.1</TargetFramework>
-        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
         <LangVersion>10</LangVersion>
+        <Nullable>enable</Nullable>
+        <PackageProjectUrl>https://github.com/Havret/RocksDb.Extensions</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/Havret/RocksDb.Extensions/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/Havret/RocksDb.Extensions</RepositoryUrl>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <Authors>Havret</Authors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="protobuf-net" Version="3.1.25" />
