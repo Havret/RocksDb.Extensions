@@ -199,43 +199,59 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         using var batch = new WriteBatch();
         for (int i = 0; i < keys.Length; i++)
         {
-            var (key, value) = (keys[i], values[i]);
-
-            // I don't think we can use the same optimizations as for scalar operations
-            // array pooling seams infeasible as we would need to keep pooled arrays until
-            // the whole batch is flushed (I'm not 100% sure that's the case - sth to be checked)
-            ReadOnlySpan<byte> keySpan;
-            if (_keySerializer.TryCalculateSize(ref key, out var keySize))
-            {
-                var keyBuffer = new byte[keySize].AsSpan();
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
-                keySpan = keyBuffer;
-            }
-            else
-            {
-                var bufferWriter = new ArrayBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, bufferWriter);
-                keySpan = bufferWriter.WrittenSpan;
-            }
-
-            ReadOnlySpan<byte> valueSpan;
-            if (_valueSerializer.TryCalculateSize(ref value, out var valueSize))
-            {
-                var valueBuffer = new byte[valueSize].AsSpan();
-                _valueSerializer.WriteTo(ref value, ref valueBuffer);
-                valueSpan = valueBuffer;
-            }
-            else
-            {
-                var bufferWriter = new ArrayBufferWriter<byte>();
-                _valueSerializer.WriteTo(ref value, bufferWriter);
-                valueSpan = bufferWriter.WrittenSpan;
-            }
-
-            _ = batch.Put(keySpan, valueSpan, _columnFamilyHandle);
+            AddToBatch(keys[i], values[i], batch);
         }
 
         _rocksDb.Write(batch);
+    }
+
+    public void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector)
+    {
+        using var batch = new WriteBatch();
+        for (int i = 0; i < values.Length; i++)
+        {
+            var value = values[i];
+            var key = keySelector(value);
+            AddToBatch(key, value, batch);
+        }
+
+        _rocksDb.Write(batch);
+    }
+
+    private void AddToBatch(TKey key, TValue value, WriteBatch batch)
+    {
+        // I don't think we can use the same optimizations as for scalar operations
+        // array pooling seams infeasible as we would need to keep pooled arrays until
+        // the whole batch is flushed (I'm not 100% sure that's the case - sth to be checked)
+        ReadOnlySpan<byte> keySpan;
+        if (_keySerializer.TryCalculateSize(ref key, out var keySize))
+        {
+            var keyBuffer = new byte[keySize].AsSpan();
+            _keySerializer.WriteTo(ref key, ref keyBuffer);
+            keySpan = keyBuffer;
+        }
+        else
+        {
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            _keySerializer.WriteTo(ref key, bufferWriter);
+            keySpan = bufferWriter.WrittenSpan;
+        }
+
+        ReadOnlySpan<byte> valueSpan;
+        if (_valueSerializer.TryCalculateSize(ref value, out var valueSize))
+        {
+            var valueBuffer = new byte[valueSize].AsSpan();
+            _valueSerializer.WriteTo(ref value, ref valueBuffer);
+            valueSpan = valueBuffer;
+        }
+        else
+        {
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            _valueSerializer.WriteTo(ref value, bufferWriter);
+            valueSpan = bufferWriter.WrittenSpan;
+        }
+
+        _ = batch.Put(keySpan, valueSpan, _columnFamilyHandle);
     }
 
     public IEnumerable<TValue> GetAll()

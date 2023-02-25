@@ -8,5 +8,6 @@ public interface IRocksDbAccessor<TKey, TValue>
     void Put(TKey key, TValue value);
     bool TryGet(TKey key, [MaybeNullWhen(false)] out TValue value);
     void PutRange(ReadOnlySpan<TKey> keys, ReadOnlySpan<TValue> values);
+    void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector);
     IEnumerable<TValue> GetAll();
 }

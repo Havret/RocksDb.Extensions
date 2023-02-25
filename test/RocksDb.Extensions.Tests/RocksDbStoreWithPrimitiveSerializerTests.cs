@@ -175,6 +175,27 @@ public class RocksDbStoreWithPrimitiveSerializerTests
             cacheValue.ShouldBe(cacheValues[index]);
         }
     }
+    
+    [Test]
+    public void should_put_range_of_data_when_key_is_derived_from_value()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<string, string>();
+        var store = testFixture.GetStore<RocksDbGenericStore<string, string>>();
+
+        // Act
+        var cacheValues = Enumerable.Range(0, 100)
+            .Select(x => x.ToString())
+            .ToArray();
+        store.PutRange(cacheValues, value => $"{value}+");
+
+        // Assert
+        foreach (var expectedCacheValue in cacheValues)
+        {
+            store.TryGet($"{expectedCacheValue}+", out var cacheValue).ShouldBeTrue();
+            cacheValue.ShouldBeEquivalentTo(expectedCacheValue);
+        }
+    }
 
     private static TestFixture CreateTestFixture<TKey, TValue>()
     {
