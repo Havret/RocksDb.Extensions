@@ -15,6 +15,7 @@ public abstract class RocksDbStore<TKey, TValue>
     public bool TryGet(TKey key, [MaybeNullWhen(false)] out TValue value) => _rocksDbAccessor.TryGet(key, out value);
 
     public void PutRange(ReadOnlySpan<TKey> keys, ReadOnlySpan<TValue> values) => _rocksDbAccessor.PutRange(keys, values);
+    public void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector) => _rocksDbAccessor.PutRange(values, keySelector);
 
     public IEnumerable<TValue> GetAll() => _rocksDbAccessor.GetAll();
 }

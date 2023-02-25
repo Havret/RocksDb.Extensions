@@ -81,6 +81,27 @@ public class RocksDbStoreWithJsonSerializerTests
             cacheValue.ShouldBeEquivalentTo(cacheValues[index]);
         }
     }
+    
+    [Test]
+    public void should_put_range_of_data_to_store_when_key_is_derived_from_value()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture();
+        var store = testFixture.GetStore<RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>();
+
+        // Act
+        var cacheValues = Enumerable.Range(0, 100)
+            .Select(x => new ProtoNetCacheValue { Id = x, Value = $"value-{x}" })
+            .ToArray();
+        store.PutRange(cacheValues, value => new ProtoNetCacheKey { Id = value.Id });
+
+        // Assert
+        foreach (var expectedCacheValue in cacheValues)
+        {
+            store.TryGet(new ProtoNetCacheKey { Id = expectedCacheValue.Id }, out var cacheValue).ShouldBeTrue();
+            cacheValue.ShouldBeEquivalentTo(expectedCacheValue);
+        }
+    }
 
     private static TestFixture CreateTestFixture()
     {
