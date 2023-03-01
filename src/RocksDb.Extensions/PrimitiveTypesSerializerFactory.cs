@@ -3,8 +3,12 @@ using System.Text;
 
 namespace RocksDb.Extensions;
 
+/// <summary>
+/// Factory for creating serializers for primitive types such as int, long, and string.
+/// </summary>
 public class PrimitiveTypesSerializerFactory : ISerializerFactory
 {
+    /// <inheritdoc/>
     public bool CanCreateSerializer<T>()
     {
         var type = typeof(T);
@@ -24,6 +28,7 @@ public class PrimitiveTypesSerializerFactory : ISerializerFactory
         return false;
     }
 
+    /// <inheritdoc/>
     public ISerializer<T> CreateSerializer<T>()
     {
         var type = typeof(T);

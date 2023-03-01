@@ -10,5 +10,5 @@ public class ProtoNetCacheValue
     public int Id { get; set; }
 
     [ProtoMember(2)]
-    public string Value { get; set; }
+    public string Value { get; set; } = null!;
 }
