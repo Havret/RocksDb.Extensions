@@ -220,38 +220,71 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
 
     private void AddToBatch(TKey key, TValue value, WriteBatch batch)
     {
-        // I don't think we can use the same optimizations as for scalar operations
-        // array pooling seams infeasible as we would need to keep pooled arrays until
-        // the whole batch is flushed (I'm not 100% sure that's the case - sth to be checked)
-        ReadOnlySpan<byte> keySpan;
-        if (_keySerializer.TryCalculateSize(ref key, out var keySize))
-        {
-            var keyBuffer = new byte[keySize].AsSpan();
-            _keySerializer.WriteTo(ref key, ref keyBuffer);
-            keySpan = keyBuffer;
-        }
-        else
-        {
-            var bufferWriter = new ArrayBufferWriter<byte>();
-            _keySerializer.WriteTo(ref key, bufferWriter);
-            keySpan = bufferWriter.WrittenSpan;
-        }
+        byte[]? rentedKeyBuffer = null;
+        bool useSpanAsKey;
+        // ReSharper disable once AssignmentInConditionalExpression
+        Span<byte> keyBuffer = (useSpanAsKey = _keySerializer.TryCalculateSize(ref key, out var keySize))
+            ? keySize < MaxStackSize
+                ? stackalloc byte[keySize]
+                : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
+            : Span<byte>.Empty;
 
-        ReadOnlySpan<byte> valueSpan;
-        if (_valueSerializer.TryCalculateSize(ref value, out var valueSize))
-        {
-            var valueBuffer = new byte[valueSize].AsSpan();
-            _valueSerializer.WriteTo(ref value, ref valueBuffer);
-            valueSpan = valueBuffer;
-        }
-        else
-        {
-            var bufferWriter = new ArrayBufferWriter<byte>();
-            _valueSerializer.WriteTo(ref value, bufferWriter);
-            valueSpan = bufferWriter.WrittenSpan;
-        }
+        ReadOnlySpan<byte> keySpan = keyBuffer;
+        ArrayPoolBufferWriter<byte>? keyBufferWriter = null;
 
-        _ = batch.Put(keySpan, valueSpan, _columnFamilyHandle);
+        byte[]? rentedValueBuffer = null;
+        bool useSpanAsValue;
+        // ReSharper disable once AssignmentInConditionalExpression
+        Span<byte> valueBuffer = (useSpanAsValue = _valueSerializer.TryCalculateSize(ref value, out var valueSize))
+            ? valueSize < MaxStackSize
+                ? stackalloc byte[valueSize]
+                : (rentedValueBuffer = ArrayPool<byte>.Shared.Rent(valueSize)).AsSpan(0, valueSize)
+            : Span<byte>.Empty;
+
+
+        ReadOnlySpan<byte> valueSpan = valueBuffer;
+        ArrayPoolBufferWriter<byte>? valueBufferWriter = null;
+
+        try
+        {
+            if (useSpanAsKey)
+            {
+                _keySerializer.WriteTo(ref key, ref keyBuffer);
+            }
+            else
+            {
+                keyBufferWriter = new ArrayPoolBufferWriter<byte>();
+                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                keySpan = keyBufferWriter.WrittenSpan;
+            }
+
+            if (useSpanAsValue)
+            {
+                _valueSerializer.WriteTo(ref value, ref valueBuffer);
+            }
+            else
+            {
+                valueBufferWriter = new ArrayPoolBufferWriter<byte>();
+                _valueSerializer.WriteTo(ref value, valueBufferWriter);
+                valueSpan = valueBufferWriter.WrittenSpan;
+            }
+            
+            _ = batch.Put(keySpan, valueSpan, _columnFamilyHandle);
+        }
+        finally
+        {
+            keyBufferWriter?.Dispose();
+            valueBufferWriter?.Dispose();
+            if (rentedKeyBuffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rentedKeyBuffer);
+            }
+
+            if (rentedValueBuffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rentedValueBuffer);
+            }
+        }
     }
 
     public IEnumerable<TValue> GetAll()
