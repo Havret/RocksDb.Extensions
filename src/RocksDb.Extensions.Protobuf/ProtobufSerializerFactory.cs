@@ -18,6 +18,6 @@ public class ProtobufSerializerFactory : ISerializerFactory
     public ISerializer<T> CreateSerializer<T>()
     {
         var type = typeof(ProtobufSerializer<>).MakeGenericType(typeof(T));
-        return (ISerializer<T>) Activator.CreateInstance(type);
+        return (ISerializer<T>)Activator.CreateInstance(type);
     }
 }

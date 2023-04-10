@@ -11,7 +11,7 @@ public interface ISerializerFactory
     /// <typeparam name="T">The type to create a serializer for.</typeparam>
     /// <returns><c>true</c> if this factory can create a serializer for the specified type; otherwise, <c>false</c>.</returns>
     bool CanCreateSerializer<T>();
-    
+
     /// <summary>
     /// Creates a serializer for the specified type.
     /// </summary>

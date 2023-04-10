@@ -19,6 +19,6 @@ public class ProtoBufNetSerializerFactory : ISerializerFactory
     {
         // Creates an instance of the ProtoBufNetSerializer with the specified type.
         var type = typeof(ProtoBufNetSerializer<>).MakeGenericType(typeof(T));
-        return (ISerializer<T>) Activator.CreateInstance(type);
+        return (ISerializer<T>)Activator.CreateInstance(type);
     }
 }

@@ -16,10 +16,10 @@ public class RocksDbStoreWithProtobufSerializerTests
 
         var store = testFixture.GetStore<RocksDbGenericStore<CacheKey, CacheValue>>();
         var cacheKeys = Enumerable.Range(0, 100)
-            .Select(x => new CacheKey { Id = x, Payload = TestUtils.CreateByteStringOf(payloadSize)})
+            .Select(x => new CacheKey { Id = x, Payload = TestUtils.CreateByteStringOf(payloadSize) })
             .ToArray();
         var cacheValues = Enumerable.Range(0, 100)
-            .Select(x => new CacheValue { Id = x, Value = $"value-{x}", Payload = TestUtils.CreateByteStringOf(payloadSize)})
+            .Select(x => new CacheValue { Id = x, Value = $"value-{x}", Payload = TestUtils.CreateByteStringOf(payloadSize) })
             .ToArray();
 
         // Act
@@ -45,10 +45,10 @@ public class RocksDbStoreWithProtobufSerializerTests
 
         var store = testFixture.GetStore<RocksDbGenericStore<CacheKey, CacheValue>>();
         var cacheKeys = Enumerable.Range(0, 100)
-            .Select(x => new CacheKey { Id = x, Payload = TestUtils.CreateByteStringOf(payloadSize)})
+            .Select(x => new CacheKey { Id = x, Payload = TestUtils.CreateByteStringOf(payloadSize) })
             .ToArray();
         var cacheValues = Enumerable.Range(0, 100)
-            .Select(x => new CacheValue { Id = x, Value = $"value-{x}", Payload = TestUtils.CreateByteStringOf(payloadSize)})
+            .Select(x => new CacheValue { Id = x, Value = $"value-{x}", Payload = TestUtils.CreateByteStringOf(payloadSize) })
             .ToArray();
         store.PutRange(cacheKeys, cacheValues);
 
@@ -113,7 +113,7 @@ public class RocksDbStoreWithProtobufSerializerTests
         values.Count.ShouldBe(cacheKeys.Length);
         values.ShouldAllBe(x => cacheValues.Contains(x));
     }
-    
+
     [Test]
     public void should_put_range_of_data_when_key_is_derived_from_value()
     {

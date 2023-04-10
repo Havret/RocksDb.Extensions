@@ -15,7 +15,7 @@ public interface ISerializer<T>
     /// <param name="size">The size of the buffer required to serialize the object.</param>
     /// <returns><c>true</c> if the size was calculated successfully; otherwise, <c>false</c>.</returns>
     bool TryCalculateSize(ref T value, out int size);
-    
+
     /// <summary>
     /// Serializes the specified object to a byte buffer.
     /// </summary>
@@ -25,7 +25,7 @@ public interface ISerializer<T>
     /// This method will be used when <see cref="TryCalculateSize"/> returns <c>true</c>.
     /// </remarks>
     void WriteTo(ref T value, ref Span<byte> span);
-    
+
     /// <summary>
     /// Serializes the specified object to a byte buffer using the provided buffer writer.
     /// </summary>
@@ -35,7 +35,7 @@ public interface ISerializer<T>
     /// This method will be used when <see cref="TryCalculateSize"/> returns <c>false</c>.
     /// </remarks>
     void WriteTo(ref T value, IBufferWriter<byte> buffer);
-    
+
     /// <summary>
     /// Deserializes an object from the provided byte span.
     /// </summary>

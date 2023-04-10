@@ -83,7 +83,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
             cacheValue.ShouldBeEquivalentTo(cacheValues[index]);
         }
     }
-    
+
     [Test]
     public void should_put_range_of_data_when_key_is_derived_from_value()
     {
