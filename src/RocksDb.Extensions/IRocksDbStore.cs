@@ -44,7 +44,7 @@ public abstract class RocksDbStore<TKey, TValue>
     /// <param name="keys">The keys to put in the store.</param>
     /// <param name="values">The values to put in the store.</param>
     public void PutRange(ReadOnlySpan<TKey> keys, ReadOnlySpan<TValue> values) => _rocksDbAccessor.PutRange(keys, values);
-    
+
     /// <summary>
     /// Puts the specified values in the store using the specified key selector function to generate keys.
     /// </summary>

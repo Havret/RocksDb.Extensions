@@ -8,7 +8,7 @@ namespace RocksDb.Extensions.System.Text.Json;
 public class SystemTextJsonSerializerFactory : ISerializerFactory
 {
     private readonly JsonSerializerOptions? _options;
-    
+
     /// <summary>
     /// Initializes a new instance of the SystemTextJsonSerializerFactory class with optional JsonSerializerOptions.
     /// </summary>
@@ -28,6 +28,6 @@ public class SystemTextJsonSerializerFactory : ISerializerFactory
     public ISerializer<T> CreateSerializer<T>()
     {
         var type = typeof(SystemTextJsonSerializer<>).MakeGenericType(typeof(T));
-        return (ISerializer<T>) Activator.CreateInstance(type, _options);
+        return (ISerializer<T>)Activator.CreateInstance(type, _options);
     }
 }
