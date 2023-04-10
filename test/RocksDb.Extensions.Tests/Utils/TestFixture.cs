@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using RocksDb.Extensions.Protobuf;
 
-namespace RocksDb.Extensions.Tests;
+namespace RocksDb.Extensions.Tests.Utils;
 
 public class TestFixture : IDisposable
 {

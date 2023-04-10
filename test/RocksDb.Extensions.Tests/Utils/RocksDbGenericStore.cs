@@ -1,4 +1,4 @@
-namespace RocksDb.Extensions.Tests;
+namespace RocksDb.Extensions.Tests.Utils;
 
 public class RocksDbGenericStore<TKey, TValue> : RocksDbStore<TKey, TValue>
 {

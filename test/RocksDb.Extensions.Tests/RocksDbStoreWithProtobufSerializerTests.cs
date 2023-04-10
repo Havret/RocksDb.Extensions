@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using RocksDb.Extensions.Protobuf;
+using RocksDb.Extensions.Tests.Utils;
 using Shouldly;
 
 namespace RocksDb.Extensions.Tests;
