@@ -55,7 +55,18 @@ internal class RocksDbContext : IDisposable
 
         var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies, userSpecifiedOptions);
 
+        if (options.Value.DeleteExistingDatabaseOnStartup)
+        {
+            DestroyDatabase(options.Value.Path);
+        }
+
         _rocksDb = RocksDbSharp.RocksDb.Open(dbOptions, options.Value.Path, columnFamilies);
+    }
+
+    private static void DestroyDatabase(string path)
+    {
+        var dbOptions = new DbOptions();
+        Native.Instance.rocksdb_destroy_db(dbOptions.Handle, path);
     }
 
     public RocksDbSharp.RocksDb Db => _rocksDb;

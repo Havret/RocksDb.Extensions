@@ -1,7 +1,7 @@
 using System.Text;
 using Google.Protobuf;
 
-namespace RocksDb.Extensions.Tests;
+namespace RocksDb.Extensions.Tests.Utils;
 
 public static class TestUtils
 {

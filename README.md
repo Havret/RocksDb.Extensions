@@ -109,3 +109,21 @@ public class UsersController : ControllerBase
     }
 }
 ```
+
+## Clean start
+
+For certain scenarios, such as automated testing, it may be useful to remove the existing RocksDB database on startup to ensure a clean start. This can be achieved using the `DeleteExistingDatabaseOnStartup` configuration option.
+
+To use this option, set it to true when configuring the `RocksDbOptions` object:
+
+```csharp
+var rocksDbBuilder = builder.Services.AddRocksDb(options =>
+{
+    // Your RocksDb configuration... 
+    options.DeleteExistingDatabaseOnStartup = true;
+});
+```
+
+When this option is set to true, the existing database will be deleted on startup and a new one will be created. Note that all data in the existing database will be lost when this option is used.
+
+By default, the `DeleteExistingDatabaseOnStartup` option is set to false to preserve the current behavior of not automatically deleting the database. If you need to ensure a clean start for your application, set this option to true in your configuration.

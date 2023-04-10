@@ -11,6 +11,17 @@ public class RocksDbOptions
     public string Path { get; set; } = null!;
 
     /// <summary>
+    /// Indicates whether the existing RocksDB database should be automatically deleted on start-up.
+    /// </summary>
+    /// <remarks>
+    /// If true, the library will automatically delete the existing database on start-up.
+    /// This can be useful when testing and debugging, as it eliminates
+    /// the need to manually delete the database before running the code again.
+    /// The default value is false.
+    /// </remarks>
+    public bool DeleteExistingDatabaseOnStartup { get; set; }
+
+    /// <summary>
     /// A list of <see cref="ISerializerFactory"/> instances that are used to serialize and deserialize data in the RocksDB instance.
     /// </summary>
     /// <remarks>
