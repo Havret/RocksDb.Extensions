@@ -1,4 +1,4 @@
-# RocksDB.Extensions
+# RocksDb.Extensions
 
 [![Build](https://github.com/Havret/RocksDb.Extensions/actions/workflows/build.yml/badge.svg)](https://github.com/Havret/RocksDb.Extensions/actions/workflows/build.yml)
 
