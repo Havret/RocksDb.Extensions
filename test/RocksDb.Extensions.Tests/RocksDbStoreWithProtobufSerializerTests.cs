@@ -31,6 +31,7 @@ public class RocksDbStoreWithProtobufSerializerTests
         // Assert
         for (int i = 0; i < cacheKeys.Length; i++)
         {
+            store.HasKey(cacheKeys[i]).ShouldBeTrue();
             store.TryGet(cacheKeys[i], out var value).ShouldBeTrue();
             value.ShouldBe(cacheValues[i]);
         }
@@ -61,6 +62,7 @@ public class RocksDbStoreWithProtobufSerializerTests
         // Assert
         foreach (var cacheKey in cacheKeys)
         {
+            store.HasKey(cacheKey).ShouldBeFalse();
             store.TryGet(cacheKey, out _).ShouldBeFalse();
         }
     }
@@ -85,6 +87,7 @@ public class RocksDbStoreWithProtobufSerializerTests
         for (var index = 0; index < cacheKeys.Length; index++)
         {
             var cacheKey = cacheKeys[index];
+            store.HasKey(cacheKey).ShouldBeTrue();
             store.TryGet(cacheKey, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBe(cacheValues[index]);
         }
@@ -130,7 +133,9 @@ public class RocksDbStoreWithProtobufSerializerTests
         // Assert
         foreach (var expectedCacheValue in cacheValues)
         {
-            store.TryGet(new CacheKey { Id = expectedCacheValue.Id }, out var cacheValue).ShouldBeTrue();
+            var key = new CacheKey { Id = expectedCacheValue.Id };
+            store.HasKey(key).ShouldBeTrue();
+            store.TryGet(key, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBeEquivalentTo(expectedCacheValue);
         }
     }

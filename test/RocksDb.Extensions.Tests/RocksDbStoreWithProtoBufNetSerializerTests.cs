@@ -30,6 +30,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
         store.Put(cacheKey, cacheValue);
 
         // Assert
+        store.HasKey(cacheKey).ShouldBeTrue();
         store.TryGet(cacheKey, out var value).ShouldBeTrue();
         value.ShouldBeEquivalentTo(cacheValue);
     }
@@ -56,6 +57,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
         store.Remove(cacheKey);
 
         // Assert
+        store.HasKey(cacheKey).ShouldBeFalse();
         store.TryGet(cacheKey, out _).ShouldBeFalse();
     }
 
@@ -79,6 +81,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
         for (var index = 0; index < cacheKeys.Length; index++)
         {
             var cacheKey = cacheKeys[index];
+            store.HasKey(cacheKey).ShouldBeTrue();
             store.TryGet(cacheKey, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBeEquivalentTo(cacheValues[index]);
         }
@@ -100,7 +103,9 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
         // Assert
         foreach (var expectedCacheValue in cacheValues)
         {
-            store.TryGet(new ProtoNetCacheKey { Id = expectedCacheValue.Id }, out var cacheValue).ShouldBeTrue();
+            var key = new ProtoNetCacheKey { Id = expectedCacheValue.Id };
+            store.HasKey(key).ShouldBeTrue();
+            store.TryGet(key, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBeEquivalentTo(expectedCacheValue);
         }
     }
