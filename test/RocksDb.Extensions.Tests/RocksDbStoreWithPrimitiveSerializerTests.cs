@@ -17,10 +17,10 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         store.Put(1, 2);
 
         // Assert
+        store.HasKey(1).ShouldBeTrue();
         store.TryGet(1, out var value).ShouldBeTrue();
         value.ShouldBe(2);
     }
-
 
     [Test]
     public void should_put_and_remove_data_from_store_using_int32_types()
@@ -34,6 +34,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         store.Remove(1);
 
         // Assert
+        store.HasKey(1).ShouldBeFalse();
         store.TryGet(1, out _).ShouldBeFalse();
     }
 
@@ -55,6 +56,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         for (var index = 0; index < cacheKeys.Length; index++)
         {
             var cacheKey = cacheKeys[index];
+            store.HasKey(cacheKey).ShouldBeTrue();
             store.TryGet(cacheKey, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBe(cacheValues[index]);
         }
@@ -71,6 +73,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         store.Put(1, 2);
 
         // Assert
+        store.HasKey(1).ShouldBeTrue();
         store.TryGet(1, out var value).ShouldBeTrue();
         value.ShouldBe(2);
     }
@@ -87,6 +90,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         store.Remove(1);
 
         // Assert
+        store.HasKey(1).ShouldBeFalse();
         store.TryGet(1, out _).ShouldBeFalse();
     }
 
@@ -110,6 +114,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         for (var index = 0; index < cacheKeys.Length; index++)
         {
             var cacheKey = cacheKeys[index];
+            store.HasKey(cacheKey).ShouldBeTrue();
             store.TryGet(cacheKey, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBe(cacheValues[index]);
         }
@@ -129,6 +134,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         store.Put(key, value);
 
         // Assert
+        store.HasKey(key);
         store.TryGet(key, out var retrievedValue).ShouldBeTrue();
         retrievedValue.ShouldBe(value);
     }
@@ -149,6 +155,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
 
 
         // Assert
+        store.HasKey(key).ShouldBeFalse();
         store.TryGet(key, out _).ShouldBeFalse();
     }
 
@@ -172,6 +179,7 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         for (var index = 0; index < cacheKeys.Length; index++)
         {
             var cacheKey = cacheKeys[index];
+            store.HasKey(cacheKey).ShouldBeTrue();
             store.TryGet(cacheKey, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBe(cacheValues[index]);
         }
@@ -193,7 +201,9 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         // Assert
         foreach (var expectedCacheValue in cacheValues)
         {
-            store.TryGet($"{expectedCacheValue}+", out var cacheValue).ShouldBeTrue();
+            var key = $"{expectedCacheValue}+";
+            store.HasKey(key).ShouldBeTrue();
+            store.TryGet(key, out var cacheValue).ShouldBeTrue();
             cacheValue.ShouldBeEquivalentTo(expectedCacheValue);
         }
     }

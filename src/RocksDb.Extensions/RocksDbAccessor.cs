@@ -297,5 +297,45 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             _ = iterator.Next();
         }
     }
+
+    public bool HasKey(TKey key)
+    {
+        byte[]? rentedKeyBuffer = null;
+        bool useSpan;
+
+        // ReSharper disable once AssignmentInConditionalExpression
+        Span<byte> keyBuffer = (useSpan = _keySerializer.TryCalculateSize(ref key, out var keySize))
+            ? keySize < MaxStackSize
+                ? stackalloc byte[keySize]
+                : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
+            : Span<byte>.Empty;
+
+        ReadOnlySpan<byte> keySpan = keyBuffer;
+        ArrayPoolBufferWriter<byte>? keyBufferWriter = null;
+
+        try
+        {
+            if (useSpan)
+            {
+                _keySerializer.WriteTo(ref key, ref keyBuffer);
+            }
+            else
+            {
+                keyBufferWriter = new ArrayPoolBufferWriter<byte>();
+                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                keySpan = keyBufferWriter.WrittenSpan;
+            }
+
+            return _rocksDb.HasKey(keySpan, _columnFamilyHandle);
+        }
+        finally
+        {
+            keyBufferWriter?.Dispose();
+            if (rentedKeyBuffer is not null)
+            {
+                ArrayPool<byte>.Shared.Return(rentedKeyBuffer);
+            }
+        }
+    }
 }
 

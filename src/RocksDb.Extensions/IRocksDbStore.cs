@@ -57,4 +57,11 @@ public abstract class RocksDbStore<TKey, TValue>
     /// </summary>
     /// <returns>An enumerable collection of all the values in the store.</returns>
     public IEnumerable<TValue> GetAll() => _rocksDbAccessor.GetAll();
+
+    /// <summary>
+    /// Determines whether the store contains a value for a specific key.
+    /// </summary>
+    /// <param name="key">The key to check in the store for an associated value.</param>
+    /// <returns><c>true</c> if the store contains an element with the specified key; otherwise, <c>false</c>.</returns>
+    public bool HasKey(TKey key) => _rocksDbAccessor.HasKey(key);
 }

@@ -13,8 +13,7 @@ public class RocksDbBenchmark : IDisposable
     private readonly CacheKey[] _keys;
     private readonly CacheValue[] _values;
     private readonly Random _random;
-
-
+    
     public RocksDbBenchmark()
     {
         var services = new ServiceCollection();
