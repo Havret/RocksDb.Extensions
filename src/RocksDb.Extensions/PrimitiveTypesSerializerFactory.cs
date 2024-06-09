@@ -4,7 +4,7 @@ using System.Text;
 namespace RocksDb.Extensions;
 
 /// <summary>
-/// Factory for creating serializers for primitive types such as int, long, and string.
+/// Factory for creating serializers for primitive types such as int, long, bool and string.
 /// </summary>
 public class PrimitiveTypesSerializerFactory : ISerializerFactory
 {
@@ -21,6 +21,10 @@ public class PrimitiveTypesSerializerFactory : ISerializerFactory
             return true;
         }
         if (type == typeof(string))
+        {
+            return true;
+        }
+        if (type == typeof(bool))
         {
             return true;
         }
@@ -42,7 +46,11 @@ public class PrimitiveTypesSerializerFactory : ISerializerFactory
         }
         if (type == typeof(string))
         {
-            return (ISerializer<T>)Activator.CreateInstance(typeof(StringSerializer));
+            return (ISerializer<T>) Activator.CreateInstance(typeof(StringSerializer));
+        }
+        if (type == typeof(bool))
+        {
+            return (ISerializer<T>) new BoolSerializer();
         }
 
         throw new ArgumentException($"Type {type.FullName} is not supported.");
@@ -119,4 +127,28 @@ public class PrimitiveTypesSerializerFactory : ISerializerFactory
             return Encoding.UTF8.GetString(buffer);
         }
     }
+    
+    private class BoolSerializer : ISerializer<bool>
+    {
+        public bool TryCalculateSize(ref bool value, out int size)
+        {
+            size = sizeof(bool);
+            return true;
+        }
+
+        public void WriteTo(ref bool value, ref Span<byte> span)
+        {
+            BitConverter.TryWriteBytes(span, value);
+        }
+
+        public void WriteTo(ref bool value, IBufferWriter<byte> buffer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Deserialize(ReadOnlySpan<byte> buffer)
+        {
+            return BitConverter.ToBoolean(buffer);
+        }
+    }    
 }
