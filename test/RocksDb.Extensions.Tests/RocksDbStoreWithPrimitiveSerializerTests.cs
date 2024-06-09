@@ -207,6 +207,61 @@ public class RocksDbStoreWithPrimitiveSerializerTests
             cacheValue.ShouldBeEquivalentTo(expectedCacheValue);
         }
     }
+    
+    [Test]
+    public void should_put_and_retrieve_data_from_store_using_bool_type()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<bool, bool>();
+        var store = testFixture.GetStore<RocksDbGenericStore<bool, bool>>();
+
+        // Act
+        store.Put(true, false);
+
+        // Assert
+        store.HasKey(true).ShouldBeTrue();
+        store.TryGet(true, out var value).ShouldBeTrue();
+        value.ShouldBe(false);
+    }
+
+    [Test]
+    public void should_put_and_remove_data_from_store_using_bool_type()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<bool, bool>();
+        var store = testFixture.GetStore<RocksDbGenericStore<bool, bool>>();
+        store.Put(true, true);
+
+        // Act
+        store.Remove(true);
+
+        // Assert
+        store.HasKey(true).ShouldBeFalse();
+        store.TryGet(true, out _).ShouldBeFalse();
+    }
+
+    [Test]
+    public void should_put_range_of_data_to_store_using_bool_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<bool, bool>();
+        var store = testFixture.GetStore<RocksDbGenericStore<bool, bool>>();
+
+        // Act
+        var cacheKeys = new[] { true, false };
+        var cacheValues = new[] { false, true };
+        
+        store.PutRange(cacheKeys.AsSpan(), cacheValues.AsSpan());
+
+        // Assert
+        for (var index = 0; index < cacheKeys.Length; index++)
+        {
+            var cacheKey = cacheKeys[index];
+            store.HasKey(cacheKey).ShouldBeTrue();
+            store.TryGet(cacheKey, out var cacheValue).ShouldBeTrue();
+            cacheValue.ShouldBe(cacheValues[index]);
+        }
+    }
 
     private static TestFixture CreateTestFixture<TKey, TValue>()
     {
