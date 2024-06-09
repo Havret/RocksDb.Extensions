@@ -38,15 +38,15 @@ public class PrimitiveTypesSerializerFactory : ISerializerFactory
         var type = typeof(T);
         if (type == typeof(int))
         {
-            return (ISerializer<T>)Activator.CreateInstance(typeof(IntSerializer));
+            return (ISerializer<T>) new IntSerializer();
         }
         if (type == typeof(long))
         {
-            return (ISerializer<T>)Activator.CreateInstance(typeof(LongSerializer));
+            return (ISerializer<T>) new LongSerializer();
         }
         if (type == typeof(string))
         {
-            return (ISerializer<T>) Activator.CreateInstance(typeof(StringSerializer));
+            return (ISerializer<T>) new StringSerializer();
         }
         if (type == typeof(bool))
         {
@@ -150,5 +150,5 @@ public class PrimitiveTypesSerializerFactory : ISerializerFactory
         {
             return BitConverter.ToBoolean(buffer);
         }
-    }    
+    }
 }
