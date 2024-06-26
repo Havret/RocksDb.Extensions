@@ -13,7 +13,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
     public void should_put_and_retrieve_data_from_store()
     {
         // Arrange
-        using var testFixture = CreateTestFixture();
+        using var testFixture = CreateTestFixture<ProtoNetCacheKey, ProtoNetCacheValue>();
 
         var store = testFixture.GetStore<RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>();
         var cacheKey = new ProtoNetCacheKey
@@ -39,7 +39,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
     public void should_put_and_remove_data_from_store()
     {
         // Arrange
-        using var testFixture = CreateTestFixture();
+        using var testFixture = CreateTestFixture<ProtoNetCacheKey, ProtoNetCacheValue>();
 
         var store = testFixture.GetStore<RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>();
         var cacheKey = new ProtoNetCacheKey
@@ -65,7 +65,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
     public void should_put_range_of_data_to_store()
     {
         // Arrange
-        using var testFixture = CreateTestFixture();
+        using var testFixture = CreateTestFixture<ProtoNetCacheKey, ProtoNetCacheValue>();
         var store = testFixture.GetStore<RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>();
 
         // Act
@@ -91,7 +91,7 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
     public void should_put_range_of_data_when_key_is_derived_from_value()
     {
         // Arrange
-        using var testFixture = CreateTestFixture();
+        using var testFixture = CreateTestFixture<ProtoNetCacheKey, ProtoNetCacheValue>();
         var store = testFixture.GetStore<RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>();
 
         // Act
@@ -109,12 +109,42 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
             cacheValue.ShouldBeEquivalentTo(expectedCacheValue);
         }
     }
+    
+    [Test]
+    public void should_put_and_retrieve_data_with_lists_from_store()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<IList<ProtoNetCacheKey>, IList<ProtoNetCacheValue>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<IList<ProtoNetCacheKey>, IList<ProtoNetCacheValue>>>();
 
-    private static TestFixture CreateTestFixture()
+        // Act
+        var cacheKey = Enumerable.Range(0, 100)
+            .Select(x => new ProtoNetCacheKey 
+            { 
+                Id = x,
+            })
+            .ToList();
+            
+        var cacheValue = Enumerable.Range(0, 100)
+            .Select(x => new ProtoNetCacheValue 
+            { 
+                Id = x, 
+                Value = $"value-{x}",
+            })
+            .ToList();
+            
+        store.Put(cacheKey, cacheValue);
+
+        store.HasKey(cacheKey).ShouldBeTrue();
+        store.TryGet(cacheKey, out var value).ShouldBeTrue();
+        value.ShouldBeEquivalentTo(cacheValue);
+    }
+    
+    private static TestFixture CreateTestFixture<TKey, TValue>()
     {
         var testFixture = TestFixture.Create(rockDb =>
         {
-            _ = rockDb.AddStore<ProtoNetCacheKey, ProtoNetCacheValue, RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>("my-store");
+            _ = rockDb.AddStore<TKey, TValue, RocksDbGenericStore<TKey, TValue>>("my-store");
         }, options =>
         {
             options.SerializerFactories.Clear();

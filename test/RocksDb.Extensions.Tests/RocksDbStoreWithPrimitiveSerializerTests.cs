@@ -262,6 +262,42 @@ public class RocksDbStoreWithPrimitiveSerializerTests
             cacheValue.ShouldBe(cacheValues[index]);
         }
     }
+    
+    [Test]
+    public void should_put_and_retrieve_data_from_store_using_list_of_primitive_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<IList<int>, IList<long>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<IList<int>, IList<long>>>();
+
+        // Act
+        var key = new List<int> { 1, 2 };
+        var value = new List<long> { 3, 4 };
+        store.Put(key, value);
+
+        // Assert
+        store.HasKey(key).ShouldBeTrue();
+        store.TryGet(key, out var cacheValue).ShouldBeTrue();
+        cacheValue.ShouldBe(value);
+    }
+
+    [Test]
+    public void should_put_and_retrieve_data_from_store_using_list_of_strings()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<IList<string>, IList<string>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<IList<string>, IList<string>>>();
+        var key = new List<string> { "key1", "key2", string.Empty, "key3" };
+        var value = new List<string> { "value1", string.Empty, "value2", "value3" };
+
+        // Act
+        store.Put(key, value);
+
+        // Assert
+        store.HasKey(key).ShouldBeTrue();
+        store.TryGet(key, out var retrievedValue).ShouldBeTrue();
+        retrievedValue.ShouldBe(value);
+    }
 
     private static TestFixture CreateTestFixture<TKey, TValue>()
     {

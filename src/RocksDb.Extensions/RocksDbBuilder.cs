@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -50,6 +51,26 @@ internal class RocksDbBuilder : IRocksDbBuilder
             {
                 return serializerFactory.CreateSerializer<T>();
             }
+        }
+        
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IList<>))
+        {
+            var elementType = type.GetGenericArguments()[0];
+            
+            // Use reflection to call CreateSerializer method with generic type argument
+            // This is equivalent to calling CreateSerializer<elementType>(serializerFactories)
+            var scalarSerializer = typeof(RocksDbBuilder).GetMethod(nameof(CreateSerializer), BindingFlags.NonPublic | BindingFlags.Static)
+                ?.MakeGenericMethod(elementType)
+                .Invoke(null, new object[] { serializerFactories });
+            
+            if (elementType.IsPrimitive)
+            {
+                // Use fixed size list serializer for primitive types
+                return (ISerializer<T>) Activator.CreateInstance(typeof(FixedSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer);
+            }
+
+            // Use variable size list serializer for non-primitive types
+            return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer);
         }
 
         throw new InvalidOperationException($"Type {type.FullName} cannot be used as RocksDbStore key/value. " +
