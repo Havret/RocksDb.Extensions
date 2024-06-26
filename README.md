@@ -62,7 +62,9 @@ var rocksDbBuilder = builder.Services.AddRocksDb(options =>
     options.SerializerFactories.Add(new SystemTextJsonSerializerFactory());
 });
 ```
+
 ### Register your store
+
 Before your store can be used, you need to register it with RocksDb. You can do this as follows:
 
 ```csharp
@@ -72,6 +74,7 @@ rocksDbBuilder.AddStore<string, User, UsersStore>("users-store");
 This registers an instance of `UsersStore` with RocksDb under the name "users-store".
 
 ### Use your store
+
 Once you have registered your store, you can use it to add, get, and remove data from RocksDb. For example:
 
 ```csharp
@@ -127,3 +130,39 @@ var rocksDbBuilder = builder.Services.AddRocksDb(options =>
 When this option is set to true, the existing database will be deleted on startup and a new one will be created. Note that all data in the existing database will be lost when this option is used.
 
 By default, the `DeleteExistingDatabaseOnStartup` option is set to false to preserve the current behavior of not automatically deleting the database. If you need to ensure a clean start for your application, set this option to true in your configuration.
+
+## Collections Support
+
+RocksDb.Extensions provides built-in support for collections across different serialization packages:
+
+### System.Text.Json and ProtoBufNet
+
+The `RocksDb.Extensions.System.Text.Json` and `RocksDb.Extensions.ProtoBufNet` packages support collections out of the box. You can use any collection type like `List<T>` or arrays without additional configuration.
+
+### Protocol Buffers and Primitive Types Support
+
+The library includes specialized support for collections when working with:
+
+1. Protocol Buffer message types
+2. Primitive types (int, long, string, etc.)
+
+When using `IList<T>` with these types, the library automatically handles serialization/deserialization without requiring wrapper message types. This is particularly useful for Protocol Buffers, where `RepeatedField<T>` typically cannot be serialized as a standalone entity.
+
+The serialization format varies depending on the element type:
+
+#### Fixed-Size Types (int, long, etc.)
+
+```
+[4 bytes: List length][Contiguous array of serialized elements]
+```
+
+#### Variable-Size Types (string, protobuf messages)
+
+```
+[4 bytes: List length][For each element: [4 bytes: Element size][N bytes: Element data]]
+```
+
+Example types that work automatically with this support:
+
+- Protocol Buffer message types: `IList<YourProtobufMessage>`
+- Primitive types: `IList<int>`, `IList<long>`, `IList<string>`, etc.
