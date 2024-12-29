@@ -25,12 +25,12 @@ jobs:
       - name: Create NuGet Package
         run: dotnet pack -c Release /p:Version=${{ github.event.release.name }} /p:PackageReleaseNotes="See https://github.com/Havret/RocksDb.Extensions/releases/tag/${{ github.event.release.tag_name }}"
       - name: Archive NuGet Package
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}
           path: ./src/${{ matrix.package }}/bin/Release/${{ matrix.package }}.${{ github.event.release.name }}.nupkg
       - name: Archive NuGet Package With Symbols
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}
           path: ./src/${{ matrix.package }}/bin/Release/${{ matrix.package }}.${{ github.event.release.name }}.snupkg
