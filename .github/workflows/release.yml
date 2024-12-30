@@ -17,7 +17,7 @@ jobs:
             RocksDb.Extensions.System.Text.Json
           ]
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2 # Upgraded to v2
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
@@ -25,12 +25,12 @@ jobs:
       - name: Create NuGet Package
         run: dotnet pack -c Release /p:Version=${{ github.event.release.name }} /p:PackageReleaseNotes="See https://github.com/Havret/RocksDb.Extensions/releases/tag/${{ github.event.release.tag_name }}"
       - name: Archive NuGet Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3 # Upgraded to v3
         with:
           name: ${{ matrix.package }}
           path: ./src/${{ matrix.package }}/bin/Release/${{ matrix.package }}.${{ github.event.release.name }}.nupkg
       - name: Archive NuGet Package With Symbols
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3 # Upgraded to v3
         with:
           name: ${{ matrix.package }}
           path: ./src/${{ matrix.package }}/bin/Release/${{ matrix.package }}.${{ github.event.release.name }}.snupkg
