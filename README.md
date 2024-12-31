@@ -73,6 +73,15 @@ rocksDbBuilder.AddStore<string, User, UsersStore>("users-store");
 
 This registers an instance of `UsersStore` with RocksDb under the name "users-store".
 
+#### Keyed Service Resolution
+You can also resolve your store as a keyed service using the column family name:
+
+```csharp
+var usersStore = serviceProvider.GetRequiredKeyedService<UsersStore>("users-store");
+```
+
+This approach allows you to register and retrieve multiple stores of the same type, each differentiated by their column family name.
+
 ### Use your store
 
 Once you have registered your store, you can use it to add, get, and remove data from RocksDb. For example:

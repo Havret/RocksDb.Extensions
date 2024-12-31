@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace RocksDb.Extensions;
@@ -22,8 +23,8 @@ internal class RocksDbBuilder : IRocksDbBuilder
         }
 
         _ = _serviceCollection.Configure<RocksDbOptions>(options => { options.ColumnFamilies.Add(columnFamily); });
-
-        _ = _serviceCollection.AddSingleton(provider =>
+        
+        _serviceCollection.AddKeyedSingleton<TStore>(columnFamily, (provider, _) =>
         {
             var rocksDbContext = provider.GetRequiredService<RocksDbContext>();
             var columnFamilyHandle = rocksDbContext.Db.GetColumnFamily(columnFamily);
@@ -38,6 +39,9 @@ internal class RocksDbBuilder : IRocksDbBuilder
             );
             return ActivatorUtilities.CreateInstance<TStore>(provider, rocksDbAccessor);
         });
+        
+        _serviceCollection.TryAddSingleton(typeof(TStore), provider => provider.GetRequiredKeyedService<TStore>(columnFamily));
+        
         return this;
     }
 

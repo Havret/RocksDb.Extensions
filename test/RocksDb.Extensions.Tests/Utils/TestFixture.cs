@@ -32,6 +32,8 @@ public class TestFixture : IDisposable
         return _serviceProvider.GetRequiredService<T>();
     }
 
+    public IServiceProvider ServiceProvider => _serviceProvider;
+
     public void Dispose()
     {
         _serviceProvider.Dispose();
