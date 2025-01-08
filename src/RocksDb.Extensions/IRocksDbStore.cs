@@ -51,6 +51,12 @@ public abstract class RocksDbStore<TKey, TValue>
     /// <param name="values">The values to put in the store.</param>
     /// <param name="keySelector">The function to use to generate keys for the values.</param>
     public void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector) => _rocksDbAccessor.PutRange(values, keySelector);
+    
+    /// <summary>
+    /// Adds or updates a collection of key-value pairs in the store.
+    /// </summary>
+    /// <param name="items">The collection of key-value pairs to add or update.</param>
+    public void PutRange(IReadOnlyList<(TKey key, TValue value)> items) => _rocksDbAccessor.PutRange(items);
 
     /// <summary>
     /// Gets all the values in the store.
