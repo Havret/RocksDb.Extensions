@@ -32,8 +32,8 @@ internal class RocksDbBuilder : IRocksDbBuilder
             var keySerializer = CreateSerializer<TKey>(rocksDbOptions.Value.SerializerFactories);
             var valueSerializer = CreateSerializer<TValue>(rocksDbOptions.Value.SerializerFactories);
             var rocksDbAccessor = new RocksDbAccessor<TKey, TValue>(
-                rocksDbContext.Db,
-                columnFamilyHandle,
+                rocksDbContext,
+                new ColumnFamily(columnFamilyHandle, columnFamily),
                 keySerializer,
                 valueSerializer
             );
