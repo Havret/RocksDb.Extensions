@@ -218,6 +218,18 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         _rocksDb.Write(batch);
     }
 
+    public void PutRange(IReadOnlyList<(TKey key, TValue value)> items)
+    {
+        using var batch = new WriteBatch();
+        for (var index = 0; index < items.Count; index++)
+        {
+            var (key, value) = items[index];
+            AddToBatch(key, value, batch);
+        }
+
+        _rocksDb.Write(batch);
+    }
+
     private void AddToBatch(TKey key, TValue value, WriteBatch batch)
     {
         byte[]? rentedKeyBuffer = null;
