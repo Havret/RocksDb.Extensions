@@ -70,4 +70,15 @@ public abstract class RocksDbStore<TKey, TValue>
     /// <param name="key">The key to check in the store for an associated value.</param>
     /// <returns><c>true</c> if the store contains an element with the specified key; otherwise, <c>false</c>.</returns>
     public bool HasKey(TKey key) => _rocksDbAccessor.HasKey(key);
+
+    /// <summary>
+    /// Resets the column family associated with the store.
+    /// This operation destroys the current column family and creates a new one,
+    /// effectively removing all stored key-value pairs.
+    ///
+    /// Note: This method is intended for scenarios where a complete reset of the column family
+    /// is required. The operation may involve internal reallocation and metadata changes, which
+    /// can impact performance during execution. Use with caution in high-frequency workflows.
+    /// </summary>
+    public void Clear() => _rocksDbAccessor.Clear();
 }

@@ -7,6 +7,7 @@ internal class RocksDbContext : IDisposable
 {
     private readonly RocksDbSharp.RocksDb _rocksDb;
     private readonly Cache _cache;
+    private readonly ColumnFamilyOptions _userSpecifiedOptions;
 
     private const long BlockCacheSize = 50 * 1024 * 1024L;
     private const long BlockSize = 4096L;
@@ -16,7 +17,7 @@ internal class RocksDbContext : IDisposable
     public RocksDbContext(IOptions<RocksDbOptions> options)
     {
         var dbOptions = new DbOptions();
-        var userSpecifiedOptions = new ColumnFamilyOptions();
+        _userSpecifiedOptions = new ColumnFamilyOptions();
         var tableConfig = new BlockBasedTableOptions();
         _cache = Cache.CreateLru(BlockCacheSize);
         tableConfig.SetBlockCache(_cache);
@@ -24,15 +25,15 @@ internal class RocksDbContext : IDisposable
 
         var filter = BloomFilterPolicy.Create();
         tableConfig.SetFilterPolicy(filter);
-        userSpecifiedOptions.SetBlockBasedTableFactory(tableConfig);
-        userSpecifiedOptions.SetWriteBufferSize(WriteBufferSize);
-        userSpecifiedOptions.SetCompression(Compression.No);
-        userSpecifiedOptions.SetCompactionStyle(Compaction.Universal);
-        userSpecifiedOptions.SetMaxWriteBufferNumberToMaintain(MaxWriteBuffers);
-        userSpecifiedOptions.SetCreateIfMissing();
-        userSpecifiedOptions.SetCreateMissingColumnFamilies();
-        userSpecifiedOptions.SetErrorIfExists(false);
-        userSpecifiedOptions.SetInfoLogLevel(InfoLogLevel.Error);
+        _userSpecifiedOptions.SetBlockBasedTableFactory(tableConfig);
+        _userSpecifiedOptions.SetWriteBufferSize(WriteBufferSize);
+        _userSpecifiedOptions.SetCompression(Compression.No);
+        _userSpecifiedOptions.SetCompactionStyle(Compaction.Universal);
+        _userSpecifiedOptions.SetMaxWriteBufferNumberToMaintain(MaxWriteBuffers);
+        _userSpecifiedOptions.SetCreateIfMissing();
+        _userSpecifiedOptions.SetCreateMissingColumnFamilies();
+        _userSpecifiedOptions.SetErrorIfExists(false);
+        _userSpecifiedOptions.SetInfoLogLevel(InfoLogLevel.Error);
 
         // this is the recommended way to increase parallelism in RocksDb
         // note that the current implementation of setIncreaseParallelism affects the number
@@ -51,9 +52,9 @@ internal class RocksDbContext : IDisposable
         var writeOptions = new WriteOptions();
         writeOptions.DisableWal(1);
 
-        userSpecifiedOptions.EnableStatistics();
+        _userSpecifiedOptions.EnableStatistics();
 
-        var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies, userSpecifiedOptions);
+        var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies, _userSpecifiedOptions);
 
         if (options.Value.DeleteExistingDatabaseOnStartup)
         {
@@ -70,6 +71,8 @@ internal class RocksDbContext : IDisposable
     }
 
     public RocksDbSharp.RocksDb Db => _rocksDb;
+
+    public ColumnFamilyOptions ColumnFamilyOptions => _userSpecifiedOptions;
 
     private static ColumnFamilies CreateColumnFamilies(IReadOnlyList<string> columnFamilyNames,
         ColumnFamilyOptions columnFamilyOptions)

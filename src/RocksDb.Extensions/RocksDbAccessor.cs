@@ -11,17 +11,17 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
 
     private readonly ISerializer<TKey> _keySerializer;
     private readonly ISerializer<TValue> _valueSerializer;
-    private readonly RocksDbSharp.RocksDb _rocksDb;
-    private readonly ColumnFamilyHandle _columnFamilyHandle;
+    private readonly RocksDbContext _rocksDbContext;
+    private readonly ColumnFamily _columnFamily;
     private readonly bool _checkIfExists;
 
-    public RocksDbAccessor(RocksDbSharp.RocksDb rocksDb,
-        ColumnFamilyHandle columnFamilyHandle,
+    public RocksDbAccessor(RocksDbContext rocksDbContext,
+        ColumnFamily columnFamily,
         ISerializer<TKey> keySerializer,
         ISerializer<TValue> valueSerializer)
     {
-        _rocksDb = rocksDb;
-        _columnFamilyHandle = columnFamilyHandle;
+        _rocksDbContext = rocksDbContext;
+        _columnFamily = columnFamily;
         _keySerializer = keySerializer;
         _valueSerializer = valueSerializer;
 
@@ -56,7 +56,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
-            _rocksDb.Remove(keySpan, _columnFamilyHandle);
+            _rocksDbContext.Db.Remove(keySpan, _columnFamily.Handle);
         }
         finally
         {
@@ -119,7 +119,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 valueSpan = valueBufferWriter.WrittenSpan;
             }
 
-            _rocksDb.Put(keySpan, valueSpan, _columnFamilyHandle);
+            _rocksDbContext.Db.Put(keySpan, valueSpan, _columnFamily.Handle);
         }
         finally
         {
@@ -165,13 +165,13 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
-            if (_checkIfExists && _rocksDb.HasKey(keySpan, _columnFamilyHandle) == false)
+            if (_checkIfExists && _rocksDbContext.Db.HasKey(keySpan, _columnFamily.Handle) == false)
             {
                 value = default;
                 return false;
             }
 
-            value = _rocksDb.Get(keySpan, this, _columnFamilyHandle);
+            value = _rocksDbContext.Db.Get(keySpan, this, _columnFamily.Handle);
             return value != null;
         }
         finally
@@ -202,7 +202,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(keys[i], values[i], batch);
         }
 
-        _rocksDb.Write(batch);
+        _rocksDbContext.Db.Write(batch);
     }
 
     public void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector)
@@ -215,7 +215,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(key, value, batch);
         }
 
-        _rocksDb.Write(batch);
+        _rocksDbContext.Db.Write(batch);
     }
 
     public void PutRange(IReadOnlyList<(TKey key, TValue value)> items)
@@ -227,7 +227,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(key, value, batch);
         }
 
-        _rocksDb.Write(batch);
+        _rocksDbContext.Db.Write(batch);
     }
 
     private void AddToBatch(TKey key, TValue value, WriteBatch batch)
@@ -281,7 +281,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 valueSpan = valueBufferWriter.WrittenSpan;
             }
             
-            _ = batch.Put(keySpan, valueSpan, _columnFamilyHandle);
+            _ = batch.Put(keySpan, valueSpan, _columnFamily.Handle);
         }
         finally
         {
@@ -301,7 +301,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
 
     public IEnumerable<TValue> GetAll()
     {
-        using var iterator = _rocksDb.NewIterator(_columnFamilyHandle);
+        using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
         _ = iterator.SeekToFirst();
         while (iterator.Valid())
         {
@@ -338,7 +338,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
-            return _rocksDb.HasKey(keySpan, _columnFamilyHandle);
+            return _rocksDbContext.Db.HasKey(keySpan, _columnFamily.Handle);
         }
         finally
         {
@@ -348,6 +348,12 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 ArrayPool<byte>.Shared.Return(rentedKeyBuffer);
             }
         }
+    }
+    
+    public void Clear()
+    {
+        _rocksDbContext.Db.DropColumnFamily(_columnFamily.Name);
+        _columnFamily.Handle = _rocksDbContext.Db.CreateColumnFamily(_rocksDbContext.ColumnFamilyOptions, _columnFamily.Name);
     }
 }
 

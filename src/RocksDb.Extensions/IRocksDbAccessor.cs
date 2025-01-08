@@ -20,6 +20,7 @@ public interface IRocksDbAccessor<TKey, TValue>
     void PutRange(IReadOnlyList<(TKey key, TValue value)> items);
     IEnumerable<TValue> GetAll();
     bool HasKey(TKey key);
+    void Clear();
 }
 
 #pragma warning restore CS1591
