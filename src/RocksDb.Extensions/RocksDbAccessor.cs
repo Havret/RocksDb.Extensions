@@ -352,8 +352,11 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
     
     public void Clear()
     {
+        var prevColumnFamilyHandle = _columnFamily.Handle;
         _rocksDbContext.Db.DropColumnFamily(_columnFamily.Name);
         _columnFamily.Handle = _rocksDbContext.Db.CreateColumnFamily(_rocksDbContext.ColumnFamilyOptions, _columnFamily.Name);
+        
+        Native.Instance.rocksdb_column_family_handle_destroy(prevColumnFamilyHandle.Handle);
     }
 }
 
