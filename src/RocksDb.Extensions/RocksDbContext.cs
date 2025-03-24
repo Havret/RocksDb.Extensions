@@ -45,6 +45,8 @@ internal class RocksDbContext : IDisposable
         dbOptions.IncreaseParallelism(Math.Max(Environment.ProcessorCount, 2));
         dbOptions.SetCreateIfMissing();
         dbOptions.SetCreateMissingColumnFamilies();
+        dbOptions.SetUseDirectReads(options.Value.UseDirectReads);
+        dbOptions.SetUseDirectIoForFlushAndCompaction(options.Value.UseDirectIoForFlushAndCompaction);
 
         var fOptions = new FlushOptions();
         fOptions.SetWaitForFlush(true);
