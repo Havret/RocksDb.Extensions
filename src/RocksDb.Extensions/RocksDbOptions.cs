@@ -32,4 +32,33 @@ public class RocksDbOptions
     public List<ISerializerFactory> SerializerFactories { get; } = new();
 
     internal List<string> ColumnFamilies { get; } = new();
+
+    /// <summary>
+    /// Enables direct I/O mode for reads, which bypasses the OS page cache.
+    /// </summary>
+    /// <remarks>
+    /// When enabled, RocksDB will open files in “direct I/O” mode, meaning data read from disk will not be cached or buffered
+    /// by the operating system. This can reduce double-buffering and improve performance in specific scenarios,
+    /// though actual impact depends on the hardware and access patterns.
+    /// <para>
+    /// Note that memory-mapped files are not affected by this setting. Hardware buffers may still be used.
+    /// </para>
+    /// The default value is <c>false</c>.
+    /// </remarks>
+    public bool UseDirectReads { get; set; } = false;
+
+    
+    /// <summary>
+    /// Enables direct I/O mode for flush and compaction operations.
+    /// </summary>
+    /// <remarks>
+    /// When enabled, RocksDB will open files in “direct I/O” mode during flush and compaction.
+    /// This means that data written to disk will bypass the OS page cache, avoiding extra buffering by the operating system.
+    /// This can potentially improve performance in some scenarios, especially when double-buffering is a concern.
+    /// <para>
+    /// Memory-mapped files are not impacted by this setting. Hardware-level buffering may still apply.
+    /// </para>
+    /// The default value is <c>false</c>.
+    /// </remarks>
+    public bool UseDirectIoForFlushAndCompaction { get; set; } = false;
 }
