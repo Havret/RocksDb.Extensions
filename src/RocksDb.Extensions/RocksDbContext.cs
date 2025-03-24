@@ -49,7 +49,7 @@ internal class RocksDbContext : IDisposable
         dbOptions.SetUseDirectIoForFlushAndCompaction(options.Value.UseDirectIoForFlushAndCompaction);
 
         var fOptions = new FlushOptions();
-        fOptions.SetWaitForFlush(true);
+        fOptions.SetWaitForFlush(options.Value.WaitForFlush);
 
         var writeOptions = new WriteOptions();
         writeOptions.DisableWal(1);
