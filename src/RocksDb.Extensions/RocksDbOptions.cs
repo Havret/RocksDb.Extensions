@@ -61,4 +61,16 @@ public class RocksDbOptions
     /// The default value is <c>false</c>.
     /// </remarks>
     public bool UseDirectIoForFlushAndCompaction { get; set; } = false;
+
+    /// <summary>
+    /// Indicates whether the flush operation should be completed before continuing.
+    /// </summary>
+    /// <remarks>
+    /// When set to <c>true</c>, the database will wait for the flush operation to finish before continuing.
+    /// This helps ensure data durability and consistency, but may slightly impact performance.
+    /// <para>
+    /// The default value is <c>true</c>.
+    /// </para>
+    /// </remarks>
+    public bool WaitForFlush { get; set; } = true;
 }
