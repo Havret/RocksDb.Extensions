@@ -7,13 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.21.9" />
-    <PackageReference Include="Google.Protobuf.Tools" Version="3.21.9" />
-    <PackageReference Include="Grpc.Tools" Version="2.50.0">
+    <PackageReference Include="Google.Protobuf" Version="3.30.2" />
+    <PackageReference Include="Google.Protobuf.Tools" Version="3.30.2" />
+    <PackageReference Include="Grpc.Tools" Version="2.71.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -9,13 +9,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Google.Protobuf.Tools" Version="3.21.9" />
-      <PackageReference Include="Grpc.Tools" Version="2.50.0">
+      <PackageReference Include="Google.Protobuf.Tools" Version="3.30.2" />
+      <PackageReference Include="Grpc.Tools" Version="2.71.0">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="BenchmarkDotNet" Version="0.13.2" />
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
+      <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.3" />
     </ItemGroup>
 
   <ItemGroup>
