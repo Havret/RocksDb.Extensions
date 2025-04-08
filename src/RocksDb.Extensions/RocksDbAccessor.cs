@@ -309,6 +309,20 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             _ = iterator.Next();
         }
     }
+    
+    public int Count()
+    {
+        using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
+        _ = iterator.SeekToFirst();
+        var count = 0;
+        while (iterator.Valid())
+        {
+            count++;
+            _ = iterator.Next();
+        }
+
+        return count;
+    }
 
     public bool HasKey(TKey key)
     {

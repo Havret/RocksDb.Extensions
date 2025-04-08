@@ -21,6 +21,7 @@ public interface IRocksDbAccessor<TKey, TValue>
     IEnumerable<TValue> GetAll();
     bool HasKey(TKey key);
     void Clear();
+    int Count();
 }
 
 #pragma warning restore CS1591
