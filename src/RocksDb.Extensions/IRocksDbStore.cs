@@ -81,4 +81,17 @@ public abstract class RocksDbStore<TKey, TValue>
     /// can impact performance during execution. Use with caution in high-frequency workflows.
     /// </summary>
     public void Clear() => _rocksDbAccessor.Clear();
+    
+    /// <summary>
+    /// Gets the number of key-value pairs currently stored.
+    /// </summary>
+    /// <remarks>
+    /// This method is <b>not</b> a constant-time operation. Internally, it iterates over all entries in the store
+    /// to compute the count. While the keys and values are not deserialized during iteration, this process may still
+    /// be expensive for large datasets.
+    ///
+    /// Use this method with caution in performance-critical paths, especially if the store contains a high number of entries.
+    /// </remarks>
+    /// <returns>The total count of items in the store.</returns>
+    public int Count() => _rocksDbAccessor.Count();
 }

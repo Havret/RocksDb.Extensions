@@ -7,7 +7,7 @@ namespace RocksDb.Extensions.Tests;
 public class ClearStoreTests
 {
     [Test]
-    public void should_reset_store_range_data_to_store()
+    public void should_clear_and_repopulate_store_data()
     {
         // Setup RocksDbStore
         using var testFixture = CreateTestFixture<int, string>();
@@ -27,6 +27,7 @@ public class ClearStoreTests
             store.TryGet(key, out var value).ShouldBeTrue();
             value.ShouldBe(expectedValue);
         }
+        Assert.That(store.Count(), Is.EqualTo(100));
 
         // Clear the store
         store.Clear();
@@ -37,6 +38,7 @@ public class ClearStoreTests
             store.HasKey(key).ShouldBeFalse();
             store.TryGet(key, out _).ShouldBeFalse();
         }
+        Assert.That(store.Count(), Is.EqualTo(0));
 
         // Try to put the data again
         store.PutRange(cacheKeys);
@@ -48,6 +50,7 @@ public class ClearStoreTests
             store.TryGet(key, out var value).ShouldBeTrue();
             value.ShouldBe(expectedValue);
         }
+        Assert.That(store.Count(), Is.EqualTo(100));
     }
 
     private static TestFixture CreateTestFixture<TKey, TValue>()
