@@ -62,7 +62,14 @@ public abstract class RocksDbStore<TKey, TValue>
     /// Gets all the values in the store.
     /// </summary>
     /// <returns>An enumerable collection of all the values in the store.</returns>
-    public IEnumerable<TValue> GetAll() => _rocksDbAccessor.GetAll();
+    public IEnumerable<TValue> GetAllValues() => _rocksDbAccessor.GetAllValues();
+
+    /// <summary>
+    /// Gets all the values in the store. (Obsolete, use GetAllValues instead)
+    /// </summary>
+    /// <returns>An enumerable collection of all the values in the store.</returns>
+    [Obsolete("Use GetAllValues() instead.")]
+    public IEnumerable<TValue> GetAll() => GetAllValues();
 
     /// <summary>
     /// Determines whether the store contains a value for a specific key.
@@ -94,4 +101,10 @@ public abstract class RocksDbStore<TKey, TValue>
     /// </remarks>
     /// <returns>The total count of items in the store.</returns>
     public int Count() => _rocksDbAccessor.Count();
+
+    /// <summary>
+    /// Gets all the keys in the store.
+    /// </summary>
+    /// <returns>An enumerable collection of all the keys in the store.</returns>
+    public IEnumerable<TKey> GetAllKeys() => _rocksDbAccessor.GetAllKeys();
 }

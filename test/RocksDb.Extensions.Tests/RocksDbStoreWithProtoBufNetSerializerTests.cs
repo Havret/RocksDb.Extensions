@@ -140,6 +140,52 @@ public class RocksDbStoreWithProtoBufNetSerializerTests
         value.ShouldBeEquivalentTo(cacheValue);
     }
     
+    [Test]
+    public void should_return_all_keys_from_store()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ProtoNetCacheKey, ProtoNetCacheValue>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>();
+        var cacheKeys = Enumerable.Range(0, 10)
+            .Select(x => new ProtoNetCacheKey { Id = x })
+            .ToArray();
+        var cacheValues = cacheKeys.Select(k => new ProtoNetCacheValue { Id = k.Id, Value = $"value-{k.Id}" }).ToArray();
+        store.PutRange(cacheKeys, cacheValues);
+
+        // Act
+        var keysFromStore = store.GetAllKeys().ToList();
+
+        // Assert
+        keysFromStore.Count.ShouldBe(cacheKeys.Length);
+        foreach (var key in cacheKeys)
+        {
+            keysFromStore.ShouldContain(k => k.Id == key.Id);
+        }
+    }
+
+    [Test]
+    public void should_return_all_values_from_store()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ProtoNetCacheKey, ProtoNetCacheValue>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ProtoNetCacheKey, ProtoNetCacheValue>>();
+        var cacheKeys = Enumerable.Range(0, 10)
+            .Select(x => new ProtoNetCacheKey { Id = x })
+            .ToArray();
+        var cacheValues = cacheKeys.Select(k => new ProtoNetCacheValue { Id = k.Id, Value = $"value-{k.Id}" }).ToArray();
+        store.PutRange(cacheKeys, cacheValues);
+
+        // Act
+        var valuesFromStore = store.GetAllValues().ToList();
+
+        // Assert
+        valuesFromStore.Count.ShouldBe(cacheValues.Length);
+        foreach (var value in cacheValues)
+        {
+            valuesFromStore.ShouldContain(v => v.Id == value.Id && v.Value == value.Value);
+        }
+    }
+    
     private static TestFixture CreateTestFixture<TKey, TValue>()
     {
         var testFixture = TestFixture.Create(rockDb =>

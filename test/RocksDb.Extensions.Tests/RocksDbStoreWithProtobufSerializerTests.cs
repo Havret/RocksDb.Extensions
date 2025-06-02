@@ -110,7 +110,7 @@ public class RocksDbStoreWithProtobufSerializerTests
         store.PutRange(cacheKeys, cacheValues);
 
         // Act
-        var values = store.GetAll().ToList();
+        var values = store.GetAllValues().ToList();
 
         // Assert
         values.Count.ShouldBe(cacheKeys.Length);

@@ -184,7 +184,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         }
     }
 
-    public TValue Deserialize(ReadOnlySpan<byte> buffer)
+    TValue ISpanDeserializer<TValue>.Deserialize(ReadOnlySpan<byte> buffer)
     {
         return _valueSerializer.Deserialize(buffer);
     }
@@ -298,8 +298,19 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             }
         }
     }
+    
+    public IEnumerable<TKey> GetAllKeys()
+    {
+        using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
+        _ = iterator.SeekToFirst();
+        while (iterator.Valid())
+        {
+            yield return _keySerializer.Deserialize(iterator.Key());
+            _ = iterator.Next();
+        }
+    }
 
-    public IEnumerable<TValue> GetAll()
+    public IEnumerable<TValue> GetAllValues()
     {
         using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
         _ = iterator.SeekToFirst();
