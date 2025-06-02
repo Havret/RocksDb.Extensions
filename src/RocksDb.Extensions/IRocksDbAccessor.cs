@@ -18,7 +18,8 @@ public interface IRocksDbAccessor<TKey, TValue>
     void PutRange(ReadOnlySpan<TKey> keys, ReadOnlySpan<TValue> values);
     void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector);
     void PutRange(IReadOnlyList<(TKey key, TValue value)> items);
-    IEnumerable<TValue> GetAll();
+    IEnumerable<TValue> GetAllValues();
+    IEnumerable<TKey> GetAllKeys();
     bool HasKey(TKey key);
     void Clear();
     int Count();

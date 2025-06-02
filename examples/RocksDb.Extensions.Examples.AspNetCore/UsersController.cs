@@ -25,7 +25,7 @@ public class UsersController : ControllerBase
     [HttpGet]
     public IEnumerable<User> Get()
     {
-        return _usersStore.GetAll();
+        return _usersStore.GetAllValues();
     }
 
     [HttpDelete]
