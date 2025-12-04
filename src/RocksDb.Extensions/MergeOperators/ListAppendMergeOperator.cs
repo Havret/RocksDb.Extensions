@@ -7,9 +7,10 @@ namespace RocksDb.Extensions.MergeOperators;
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 /// <example>
 /// <code>
-/// public class EventLogStore : RocksDbStore&lt;string, IList&lt;string&gt;&gt;
+/// public class EventLogStore : MergeableRocksDbStore&lt;string, IList&lt;string&gt;, IList&lt;string&gt;&gt;
 /// {
-///     public EventLogStore(IRocksDbAccessor&lt;string, IList&lt;string&gt;&gt; accessor) : base(accessor) { }
+///     public EventLogStore(IRocksDbAccessor&lt;string, IList&lt;string&gt;&gt; accessor, IMergeAccessor&lt;string, IList&lt;string&gt;&gt; mergeAccessor) 
+///         : base(accessor, mergeAccessor) { }
 ///     
 ///     public void AppendEvent(string key, string eventData)
 ///     {
@@ -18,10 +19,10 @@ namespace RocksDb.Extensions.MergeOperators;
 /// }
 /// 
 /// // Registration:
-/// builder.AddStore&lt;string, IList&lt;string&gt;, EventLogStore&gt;("events", new ListAppendMergeOperator&lt;string&gt;());
+/// builder.AddMergeableStore&lt;string, IList&lt;string&gt;, IList&lt;string&gt;, EventLogStore&gt;("events", new ListAppendMergeOperator&lt;string&gt;());
 /// </code>
 /// </example>
-public class ListAppendMergeOperator<T> : IMergeOperator<IList<T>>
+public class ListAppendMergeOperator<T> : IMergeOperator<IList<T>, IList<T>>
 {
     /// <inheritdoc />
     public string Name => $"ListAppendMergeOperator<{typeof(T).Name}>";

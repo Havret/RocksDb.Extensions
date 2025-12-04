@@ -5,8 +5,17 @@ namespace RocksDb.Extensions;
 /// Merge operators allow efficient updates without requiring a separate read before write,
 /// which is particularly useful for counters, list appends, set unions, and other accumulative operations.
 /// </summary>
-/// <typeparam name="TValue">The type of the value being merged.</typeparam>
-public interface IMergeOperator<TValue>
+/// <typeparam name="TValue">The type of the value stored in the database.</typeparam>
+/// <typeparam name="TOperand">The type of the merge operand (the delta/change to apply).</typeparam>
+/// <remarks>
+/// The separation of <typeparamref name="TValue"/> and <typeparamref name="TOperand"/> allows for flexible merge patterns:
+/// <list type="bullet">
+/// <item><description>For counters: TValue=long, TOperand=long (same type)</description></item>
+/// <item><description>For list append: TValue=IList&lt;T&gt;, TOperand=IList&lt;T&gt; (same type)</description></item>
+/// <item><description>For list with add/remove: TValue=IList&lt;T&gt;, TOperand=ListOperation&lt;T&gt; (different types)</description></item>
+/// </list>
+/// </remarks>
+public interface IMergeOperator<TValue, TOperand>
 {
     /// <summary>
     /// Gets the name of the merge operator. This name is stored in the database
@@ -19,10 +28,10 @@ public interface IMergeOperator<TValue>
     /// Called when a Get operation encounters merge operands and needs to produce the final value.
     /// </summary>
     /// <param name="key">The key being merged.</param>
-    /// <param name="existingValue">The existing value in the database. For value types, this will be default if no value exists (check hasExistingValue).</param>
+    /// <param name="existingValue">The existing value in the database. For value types, this will be default if no value exists.</param>
     /// <param name="operands">The list of merge operands to apply, in order.</param>
-    /// <returns>The merged value.</returns>
-    TValue FullMerge(ReadOnlySpan<byte> key, TValue existingValue, IReadOnlyList<TValue> operands);
+    /// <returns>The merged value to store.</returns>
+    TValue FullMerge(ReadOnlySpan<byte> key, TValue existingValue, IReadOnlyList<TOperand> operands);
 
     /// <summary>
     /// Performs a partial merge of multiple operands without the existing value.
@@ -31,9 +40,6 @@ public interface IMergeOperator<TValue>
     /// </summary>
     /// <param name="key">The key being merged.</param>
     /// <param name="operands">The list of merge operands to combine, in order.</param>
-    /// <returns>
-    /// The combined operand if partial merge is possible; otherwise, default to indicate
-    /// that partial merge is not supported and operands should be kept separate.
-    /// </returns>
-    TValue PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<TValue> operands);
+    /// <returns>The combined operand.</returns>
+    TOperand PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<TOperand> operands);
 }

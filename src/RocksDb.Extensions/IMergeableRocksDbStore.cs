@@ -5,7 +5,8 @@ namespace RocksDb.Extensions;
 /// </summary>
 /// <typeparam name="TKey">The type of the store's keys.</typeparam>
 /// <typeparam name="TValue">The type of the store's values.</typeparam>
-public interface IMergeableRocksDbStore<in TKey, TValue>
+/// <typeparam name="TOperand">The type of the merge operand.</typeparam>
+public interface IMergeableRocksDbStore<in TKey, TValue, in TOperand>
 {
     /// <summary>
     /// Performs an atomic merge operation on the value associated with the specified key.
@@ -15,5 +16,5 @@ public interface IMergeableRocksDbStore<in TKey, TValue>
     /// </summary>
     /// <param name="key">The key to merge the operand with.</param>
     /// <param name="operand">The operand to merge with the existing value.</param>
-    void Merge(TKey key, TValue operand);
+    void Merge(TKey key, TOperand operand);
 }

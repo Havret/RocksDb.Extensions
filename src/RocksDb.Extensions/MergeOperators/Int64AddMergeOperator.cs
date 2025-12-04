@@ -6,18 +6,19 @@ namespace RocksDb.Extensions.MergeOperators;
 /// </summary>
 /// <example>
 /// <code>
-/// public class CounterStore : RocksDbStore&lt;string, long&gt;
+/// public class CounterStore : MergeableRocksDbStore&lt;string, long, long&gt;
 /// {
-///     public CounterStore(IRocksDbAccessor&lt;string, long&gt; accessor) : base(accessor) { }
+///     public CounterStore(IRocksDbAccessor&lt;string, long&gt; accessor, IMergeAccessor&lt;string, long&gt; mergeAccessor) 
+///         : base(accessor, mergeAccessor) { }
 ///     
 ///     public void Increment(string key, long delta = 1) => Merge(key, delta);
 /// }
 /// 
 /// // Registration:
-/// builder.AddStore&lt;string, long, CounterStore&gt;("counters", new Int64AddMergeOperator());
+/// builder.AddMergeableStore&lt;string, long, long, CounterStore&gt;("counters", new Int64AddMergeOperator());
 /// </code>
 /// </example>
-public class Int64AddMergeOperator : IMergeOperator<long>
+public class Int64AddMergeOperator : IMergeOperator<long, long>
 {
     /// <inheritdoc />
     public string Name => "Int64AddMergeOperator";

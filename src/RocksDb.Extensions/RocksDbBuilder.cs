@@ -20,22 +20,6 @@ internal class RocksDbBuilder : IRocksDbBuilder
 
     public IRocksDbBuilder AddStore<TKey, TValue, TStore>(string columnFamily) where TStore : RocksDbStore<TKey, TValue>
     {
-        return AddStoreInternal<TKey, TValue, TStore>(columnFamily, null);
-    }
-
-    public IRocksDbBuilder AddStore<TKey, TValue, TStore>(string columnFamily, IMergeOperator<TValue> mergeOperator) where TStore : RocksDbStore<TKey, TValue>
-    {
-        return AddStoreInternal<TKey, TValue, TStore>(columnFamily, mergeOperator);
-    }
-
-    public IRocksDbBuilder AddMergeableStore<TKey, TValue, TStore>(string columnFamily, IMergeOperator<TValue> mergeOperator) 
-        where TStore : MergeableRocksDbStore<TKey, TValue>
-    {
-        return AddStoreInternal<TKey, TValue, TStore>(columnFamily, mergeOperator);
-    }
-
-    private IRocksDbBuilder AddStoreInternal<TKey, TValue, TStore>(string columnFamily, IMergeOperator<TValue>? mergeOperator) where TStore : RocksDbStore<TKey, TValue>
-    {
         if (!_columnFamilyLookup.Add(columnFamily))
         {
             throw new InvalidOperationException($"{columnFamily} is already registered.");
@@ -44,13 +28,6 @@ internal class RocksDbBuilder : IRocksDbBuilder
         _ = _serviceCollection.Configure<RocksDbOptions>(options =>
         {
             options.ColumnFamilies.Add(columnFamily);
-
-            if (mergeOperator != null)
-            {
-                var valueSerializer = CreateSerializer<TValue>(options.SerializerFactories);
-                var config = CreateMergeOperatorConfig(mergeOperator, valueSerializer);
-                options.MergeOperators[columnFamily] = config;
-            }
         });
         
         _serviceCollection.AddKeyedSingleton<TStore>(columnFamily, (provider, _) =>
@@ -74,7 +51,59 @@ internal class RocksDbBuilder : IRocksDbBuilder
         return this;
     }
 
-    private static MergeOperatorConfig CreateMergeOperatorConfig<TValue>(IMergeOperator<TValue> mergeOperator, ISerializer<TValue> valueSerializer)
+    public IRocksDbBuilder AddMergeableStore<TKey, TValue, TOperand, TStore>(string columnFamily, IMergeOperator<TValue, TOperand> mergeOperator) 
+        where TStore : MergeableRocksDbStore<TKey, TValue, TOperand>
+    {
+        if (!_columnFamilyLookup.Add(columnFamily))
+        {
+            throw new InvalidOperationException($"{columnFamily} is already registered.");
+        }
+
+        _ = _serviceCollection.Configure<RocksDbOptions>(options =>
+        {
+            options.ColumnFamilies.Add(columnFamily);
+
+            var valueSerializer = CreateSerializer<TValue>(options.SerializerFactories);
+            var operandSerializer = CreateSerializer<TOperand>(options.SerializerFactories);
+            var config = CreateMergeOperatorConfig(mergeOperator, valueSerializer, operandSerializer);
+            options.MergeOperators[columnFamily] = config;
+        });
+        
+        _serviceCollection.AddKeyedSingleton<TStore>(columnFamily, (provider, _) =>
+        {
+            var rocksDbContext = provider.GetRequiredService<RocksDbContext>();
+            var columnFamilyHandle = rocksDbContext.Db.GetColumnFamily(columnFamily);
+            var rocksDbOptions = provider.GetRequiredService<IOptions<RocksDbOptions>>();
+            var keySerializer = CreateSerializer<TKey>(rocksDbOptions.Value.SerializerFactories);
+            var valueSerializer = CreateSerializer<TValue>(rocksDbOptions.Value.SerializerFactories);
+            var operandSerializer = CreateSerializer<TOperand>(rocksDbOptions.Value.SerializerFactories);
+            
+            var rocksDbAccessor = new RocksDbAccessor<TKey, TValue>(
+                rocksDbContext,
+                new ColumnFamily(columnFamilyHandle, columnFamily),
+                keySerializer,
+                valueSerializer
+            );
+            
+            var mergeAccessor = new MergeAccessor<TKey, TOperand>(
+                rocksDbContext.Db,
+                columnFamilyHandle,
+                keySerializer,
+                operandSerializer
+            );
+            
+            return ActivatorUtilities.CreateInstance<TStore>(provider, rocksDbAccessor, mergeAccessor);
+        });
+        
+        _serviceCollection.TryAddSingleton(typeof(TStore), provider => provider.GetRequiredKeyedService<TStore>(columnFamily));
+        
+        return this;
+    }
+
+    private static MergeOperatorConfig CreateMergeOperatorConfig<TValue, TOperand>(
+        IMergeOperator<TValue, TOperand> mergeOperator, 
+        ISerializer<TValue> valueSerializer,
+        ISerializer<TOperand> operandSerializer)
     {
         return new MergeOperatorConfig
         {
@@ -82,22 +111,23 @@ internal class RocksDbBuilder : IRocksDbBuilder
             ValueSerializer = valueSerializer,
             FullMerge = (ReadOnlySpan<byte> key, bool hasExistingValue, ReadOnlySpan<byte> existingValue, global::RocksDbSharp.MergeOperators.OperandsEnumerator operands, out bool success) =>
             {
-                return FullMergeCallback(key, hasExistingValue, existingValue, operands, mergeOperator, valueSerializer, out success);
+                return FullMergeCallback(key, hasExistingValue, existingValue, operands, mergeOperator, valueSerializer, operandSerializer, out success);
             },
             PartialMerge = (ReadOnlySpan<byte> key, global::RocksDbSharp.MergeOperators.OperandsEnumerator operands, out bool success) =>
             {
-                return PartialMergeCallback(key, operands, mergeOperator, valueSerializer, out success);
+                return PartialMergeCallback(key, operands, mergeOperator, operandSerializer, out success);
             }
         };
     }
 
-    private static byte[] FullMergeCallback<TValue>(
+    private static byte[] FullMergeCallback<TValue, TOperand>(
         ReadOnlySpan<byte> key,
         bool hasExistingValue,
         ReadOnlySpan<byte> existingValue,
         global::RocksDbSharp.MergeOperators.OperandsEnumerator operands,
-        IMergeOperator<TValue> mergeOperator,
+        IMergeOperator<TValue, TOperand> mergeOperator,
         ISerializer<TValue> valueSerializer,
+        ISerializer<TOperand> operandSerializer,
         out bool success)
     {
         success = true;
@@ -106,54 +136,54 @@ internal class RocksDbBuilder : IRocksDbBuilder
         TValue existing = hasExistingValue ? valueSerializer.Deserialize(existingValue) : default!;
 
         // Deserialize all operands
-        var operandList = new List<TValue>(operands.Count);
+        var operandList = new List<TOperand>(operands.Count);
         for (int i = 0; i < operands.Count; i++)
         {
-            operandList.Add(valueSerializer.Deserialize(operands.Get(i)));
+            operandList.Add(operandSerializer.Deserialize(operands.Get(i)));
         }
 
-        // Call the user's merge operator
+        // Call the user's merge operator - returns TValue
         var result = mergeOperator.FullMerge(key, existing, operandList);
 
-        // Serialize the result
+        // Serialize the result as TValue
         return SerializeValue(result, valueSerializer);
     }
 
-    private static byte[] PartialMergeCallback<TValue>(
+    private static byte[] PartialMergeCallback<TValue, TOperand>(
         ReadOnlySpan<byte> key,
         global::RocksDbSharp.MergeOperators.OperandsEnumerator operands,
-        IMergeOperator<TValue> mergeOperator,
-        ISerializer<TValue> valueSerializer,
+        IMergeOperator<TValue, TOperand> mergeOperator,
+        ISerializer<TOperand> operandSerializer,
         out bool success)
     {
         // Deserialize all operands
-        var operandList = new List<TValue>(operands.Count);
+        var operandList = new List<TOperand>(operands.Count);
         for (int i = 0; i < operands.Count; i++)
         {
-            operandList.Add(valueSerializer.Deserialize(operands.Get(i)));
+            operandList.Add(operandSerializer.Deserialize(operands.Get(i)));
         }
 
-        // Call the user's partial merge operator
+        // Call the user's partial merge operator - returns TOperand
         var result = mergeOperator.PartialMerge(key, operandList);
 
         success = true;
-        // Serialize the result
-        return SerializeValue(result, valueSerializer);
+        // Serialize the result as TOperand
+        return SerializeValue(result, operandSerializer);
     }
 
-    private static byte[] SerializeValue<TValue>(TValue value, ISerializer<TValue> valueSerializer)
+    private static byte[] SerializeValue<T>(T value, ISerializer<T> serializer)
     {
-        if (valueSerializer.TryCalculateSize(ref value, out var size))
+        if (serializer.TryCalculateSize(ref value, out var size))
         {
             var buffer = new byte[size];
             var span = buffer.AsSpan();
-            valueSerializer.WriteTo(ref value, ref span);
+            serializer.WriteTo(ref value, ref span);
             return buffer;
         }
         else
         {
             using var bufferWriter = new ArrayPoolBufferWriter<byte>();
-            valueSerializer.WriteTo(ref value, bufferWriter);
+            serializer.WriteTo(ref value, bufferWriter);
             return bufferWriter.WrittenSpan.ToArray();
         }
     }
