@@ -5,9 +5,9 @@ using RocksDb.Extensions.Tests.Utils;
 namespace RocksDb.Extensions.Tests;
 
 /// <summary>
-/// Store that exposes the protected Merge method for testing counters.
+/// Store that uses merge operations for testing counters.
 /// </summary>
-public class CounterStore : RocksDbStore<string, long>
+public class CounterStore : MergeableRocksDbStore<string, long>
 {
     public CounterStore(IRocksDbAccessor<string, long> rocksDbAccessor) : base(rocksDbAccessor)
     {
@@ -17,15 +17,45 @@ public class CounterStore : RocksDbStore<string, long>
 }
 
 /// <summary>
-/// Store that exposes the protected Merge method for testing list appends.
+/// Store that uses merge operations for testing list appends.
 /// </summary>
-public class EventLogStore : RocksDbStore<string, IList<string>>
+public class EventLogStore : MergeableRocksDbStore<string, IList<string>>
 {
     public EventLogStore(IRocksDbAccessor<string, IList<string>> rocksDbAccessor) : base(rocksDbAccessor)
     {
     }
 
     public void AppendEvent(string key, string eventData) => Merge(key, new List<string> { eventData });
+}
+
+/// <summary>
+/// Store that uses merge operations for testing list operations (add/remove).
+/// </summary>
+public class TagsStore : MergeableRocksDbStore<string, IList<ListOperation<string>>>
+{
+    public TagsStore(IRocksDbAccessor<string, IList<ListOperation<string>>> rocksDbAccessor) : base(rocksDbAccessor)
+    {
+    }
+
+    public void AddTags(string key, params string[] tags)
+    {
+        Merge(key, new List<ListOperation<string>> { ListOperation<string>.Add(tags) });
+    }
+
+    public void RemoveTags(string key, params string[] tags)
+    {
+        Merge(key, new List<ListOperation<string>> { ListOperation<string>.Remove(tags) });
+    }
+
+    public IList<string>? GetTags(string key)
+    {
+        if (TryGet(key, out var operations) && operations != null && operations.Count > 0)
+        {
+            // The merged result is a single Add operation containing all items
+            return operations[0].Items;
+        }
+        return null;
+    }
 }
 
 public class MergeOperatorTests
@@ -36,7 +66,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddStore<string, long, CounterStore>("counters", new Int64AddMergeOperator());
+            rockDb.AddMergeableStore<string, long, CounterStore>("counters", new Int64AddMergeOperator());
         });
 
         var store = testFixture.GetStore<CounterStore>();
@@ -58,7 +88,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddStore<string, long, CounterStore>("counters", new Int64AddMergeOperator());
+            rockDb.AddMergeableStore<string, long, CounterStore>("counters", new Int64AddMergeOperator());
         });
 
         var store = testFixture.GetStore<CounterStore>();
@@ -79,7 +109,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddStore<string, IList<string>, EventLogStore>("events", new ListAppendMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, EventLogStore>("events", new ListAppendMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<EventLogStore>();
@@ -105,7 +135,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddStore<string, IList<string>, EventLogStore>("events", new ListAppendMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, EventLogStore>("events", new ListAppendMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<EventLogStore>();
@@ -129,7 +159,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddStore<string, long, CounterStore>("counters", new Int64AddMergeOperator());
+            rockDb.AddMergeableStore<string, long, CounterStore>("counters", new Int64AddMergeOperator());
         });
 
         var store = testFixture.GetStore<CounterStore>();
@@ -149,5 +179,129 @@ public class MergeOperatorTests
             Assert.That(store.TryGet("key2", out var value2), Is.True);
             Assert.That(value2, Is.EqualTo(30));
         });
+    }
+
+    [Test]
+    public void should_add_items_to_list_using_list_merge_operator()
+    {
+        // Arrange
+        using var testFixture = TestFixture.Create(rockDb =>
+        {
+            rockDb.AddMergeableStore<string, IList<ListOperation<string>>, TagsStore>("tags", new ListMergeOperator<string>());
+        });
+
+        var store = testFixture.GetStore<TagsStore>();
+        var key = "article-1";
+
+        // Act
+        store.AddTags(key, "csharp", "dotnet");
+        store.AddTags(key, "rocksdb");
+
+        // Assert
+        var tags = store.GetTags(key);
+        Assert.That(tags, Is.Not.Null);
+        Assert.That(tags!.Count, Is.EqualTo(3));
+        Assert.That(tags, Does.Contain("csharp"));
+        Assert.That(tags, Does.Contain("dotnet"));
+        Assert.That(tags, Does.Contain("rocksdb"));
+    }
+
+    [Test]
+    public void should_remove_items_from_list_using_list_merge_operator()
+    {
+        // Arrange
+        using var testFixture = TestFixture.Create(rockDb =>
+        {
+            rockDb.AddMergeableStore<string, IList<ListOperation<string>>, TagsStore>("tags", new ListMergeOperator<string>());
+        });
+
+        var store = testFixture.GetStore<TagsStore>();
+        var key = "article-1";
+
+        // Act - Add items, then remove some
+        store.AddTags(key, "csharp", "dotnet", "java", "python");
+        store.RemoveTags(key, "java", "python");
+
+        // Assert
+        var tags = store.GetTags(key);
+        Assert.That(tags, Is.Not.Null);
+        Assert.That(tags!.Count, Is.EqualTo(2));
+        Assert.That(tags, Does.Contain("csharp"));
+        Assert.That(tags, Does.Contain("dotnet"));
+        Assert.That(tags, Does.Not.Contain("java"));
+        Assert.That(tags, Does.Not.Contain("python"));
+    }
+
+    [Test]
+    public void should_handle_mixed_add_and_remove_operations()
+    {
+        // Arrange
+        using var testFixture = TestFixture.Create(rockDb =>
+        {
+            rockDb.AddMergeableStore<string, IList<ListOperation<string>>, TagsStore>("tags", new ListMergeOperator<string>());
+        });
+
+        var store = testFixture.GetStore<TagsStore>();
+        var key = "article-1";
+
+        // Act - Interleave adds and removes
+        store.AddTags(key, "a", "b", "c");
+        store.RemoveTags(key, "b");
+        store.AddTags(key, "d", "e");
+        store.RemoveTags(key, "a", "e");
+
+        // Assert - Should have: c, d
+        var tags = store.GetTags(key);
+        Assert.That(tags, Is.Not.Null);
+        Assert.That(tags!.Count, Is.EqualTo(2));
+        Assert.That(tags, Does.Contain("c"));
+        Assert.That(tags, Does.Contain("d"));
+    }
+
+    [Test]
+    public void should_handle_remove_nonexistent_item_gracefully()
+    {
+        // Arrange
+        using var testFixture = TestFixture.Create(rockDb =>
+        {
+            rockDb.AddMergeableStore<string, IList<ListOperation<string>>, TagsStore>("tags", new ListMergeOperator<string>());
+        });
+
+        var store = testFixture.GetStore<TagsStore>();
+        var key = "article-1";
+
+        // Act - Try to remove items that don't exist
+        store.AddTags(key, "csharp");
+        store.RemoveTags(key, "nonexistent");
+
+        // Assert - Original item should still be there
+        var tags = store.GetTags(key);
+        Assert.That(tags, Is.Not.Null);
+        Assert.That(tags!.Count, Is.EqualTo(1));
+        Assert.That(tags, Does.Contain("csharp"));
+    }
+
+    [Test]
+    public void should_remove_only_first_occurrence_of_duplicate_items()
+    {
+        // Arrange
+        using var testFixture = TestFixture.Create(rockDb =>
+        {
+            rockDb.AddMergeableStore<string, IList<ListOperation<string>>, TagsStore>("tags", new ListMergeOperator<string>());
+        });
+
+        var store = testFixture.GetStore<TagsStore>();
+        var key = "article-1";
+
+        // Act - Add duplicate items, then remove one
+        store.AddTags(key, "tag", "tag", "tag");
+        store.RemoveTags(key, "tag");
+
+        // Assert - Should have 2 remaining
+        var tags = store.GetTags(key);
+        Assert.That(tags, Is.Not.Null);
+        Assert.That(tags!.Count, Is.EqualTo(2));
+        Assert.That(tags[0], Is.EqualTo("tag"));
+        Assert.That(tags[1], Is.EqualTo("tag"));
     }
 }

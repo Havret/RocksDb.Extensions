@@ -28,6 +28,12 @@ internal class RocksDbBuilder : IRocksDbBuilder
         return AddStoreInternal<TKey, TValue, TStore>(columnFamily, mergeOperator);
     }
 
+    public IRocksDbBuilder AddMergeableStore<TKey, TValue, TStore>(string columnFamily, IMergeOperator<TValue> mergeOperator) 
+        where TStore : MergeableRocksDbStore<TKey, TValue>
+    {
+        return AddStoreInternal<TKey, TValue, TStore>(columnFamily, mergeOperator);
+    }
+
     private IRocksDbBuilder AddStoreInternal<TKey, TValue, TStore>(string columnFamily, IMergeOperator<TValue>? mergeOperator) where TStore : RocksDbStore<TKey, TValue>
     {
         if (!_columnFamilyLookup.Add(columnFamily))
@@ -177,11 +183,25 @@ internal class RocksDbBuilder : IRocksDbBuilder
             if (elementType.IsPrimitive)
             {
                 // Use fixed size list serializer for primitive types
-                return (ISerializer<T>) Activator.CreateInstance(typeof(FixedSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer);
+                return (ISerializer<T>) Activator.CreateInstance(typeof(FixedSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
             }
 
             // Use variable size list serializer for non-primitive types
-            return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer);
+            return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
+        }
+
+        // Handle ListOperation<T> for the ListMergeOperator
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(MergeOperators.ListOperation<>))
+        {
+            var itemType = type.GetGenericArguments()[0];
+            
+            // Create the item serializer
+            var itemSerializer = typeof(RocksDbBuilder).GetMethod(nameof(CreateSerializer), BindingFlags.NonPublic | BindingFlags.Static)
+                ?.MakeGenericMethod(itemType)
+                .Invoke(null, new object[] { serializerFactories });
+            
+            // Create ListOperationSerializer<itemType>
+            return (ISerializer<T>) Activator.CreateInstance(typeof(ListOperationSerializer<>).MakeGenericType(itemType), itemSerializer)!;
         }
 
         throw new InvalidOperationException($"Type {type.FullName} cannot be used as RocksDbStore key/value. " +
