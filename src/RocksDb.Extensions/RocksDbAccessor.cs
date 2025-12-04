@@ -7,12 +7,12 @@ namespace RocksDb.Extensions;
 
 internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, ISpanDeserializer<TValue>
 {
-    private const int MaxStackSize = 256;
+    private protected const int MaxStackSize = 256;
 
-    private readonly ISerializer<TKey> _keySerializer;
-    private readonly ISerializer<TValue> _valueSerializer;
-    private readonly RocksDbContext _rocksDbContext;
-    private readonly ColumnFamily _columnFamily;
+    protected readonly ISerializer<TKey> _keySerializer;
+    protected private readonly ISerializer<TValue> _valueSerializer;
+    protected private readonly RocksDbContext _rocksDbContext;
+    private protected readonly ColumnFamily _columnFamily;
     private readonly bool _checkIfExists;
 
     public RocksDbAccessor(RocksDbContext rocksDbContext,
@@ -280,7 +280,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 _valueSerializer.WriteTo(ref value, valueBufferWriter);
                 valueSpan = valueBufferWriter.WrittenSpan;
             }
-            
+
             _ = batch.Put(keySpan, valueSpan, _columnFamily.Handle);
         }
         finally
@@ -298,7 +298,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             }
         }
     }
-    
+
     public IEnumerable<TKey> GetAllKeys()
     {
         using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
@@ -320,7 +320,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             _ = iterator.Next();
         }
     }
-    
+
     public int Count()
     {
         using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
@@ -374,13 +374,13 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             }
         }
     }
-    
+
     public void Clear()
     {
         var prevColumnFamilyHandle = _columnFamily.Handle;
         _rocksDbContext.Db.DropColumnFamily(_columnFamily.Name);
         _columnFamily.Handle = _rocksDbContext.Db.CreateColumnFamily(_rocksDbContext.ColumnFamilyOptions, _columnFamily.Name);
-        
+
         Native.Instance.rocksdb_column_family_handle_destroy(prevColumnFamilyHandle.Handle);
     }
 

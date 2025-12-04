@@ -5,25 +5,12 @@ using RocksDb.Extensions.Tests.Utils;
 namespace RocksDb.Extensions.Tests;
 
 /// <summary>
-/// Store that uses merge operations for testing counters.
-/// </summary>
-public class CounterStore : MergeableRocksDbStore<string, long, long>
-{
-    public CounterStore(IRocksDbAccessor<string, long> rocksDbAccessor, IMergeAccessor<string, long> mergeAccessor) 
-        : base(rocksDbAccessor, mergeAccessor)
-    {
-    }
-
-    public void Increment(string key, long delta = 1) => Merge(key, delta);
-}
-
-/// <summary>
 /// Store that uses merge operations for testing list appends.
 /// </summary>
 public class EventLogStore : MergeableRocksDbStore<string, IList<string>, IList<string>>
 {
-    public EventLogStore(IRocksDbAccessor<string, IList<string>> rocksDbAccessor, IMergeAccessor<string, IList<string>> mergeAccessor) 
-        : base(rocksDbAccessor, mergeAccessor)
+    public EventLogStore(IMergeAccessor<string, IList<string>, IList<string>> mergeAccessor)
+        : base(mergeAccessor)
     {
     }
 
@@ -35,8 +22,8 @@ public class EventLogStore : MergeableRocksDbStore<string, IList<string>, IList<
 /// </summary>
 public class TagsStore : MergeableRocksDbStore<string, IList<string>, ListOperation<string>>
 {
-    public TagsStore(IRocksDbAccessor<string, IList<string>> rocksDbAccessor, IMergeAccessor<string, ListOperation<string>> mergeAccessor) 
-        : base(rocksDbAccessor, mergeAccessor)
+    public TagsStore(IMergeAccessor<string, IList<string>, ListOperation<string>> mergeAccessor)
+        : base(mergeAccessor)
     {
     }
 
@@ -53,14 +40,14 @@ public class TagsStore : MergeableRocksDbStore<string, IList<string>, ListOperat
 
 public class MergeOperatorTests
 {
-    
     [Test]
     public void should_append_to_list_using_merge_operation()
     {
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, IList<string>, EventLogStore>("events", new ListAppendMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, EventLogStore, IList<string>>("events",
+                new ListAppendMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<EventLogStore>();
@@ -86,7 +73,8 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, IList<string>, EventLogStore>("events", new ListAppendMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, EventLogStore, IList<string>>("events",
+                new ListAppendMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<EventLogStore>();
@@ -110,7 +98,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, ListOperation<string>, TagsStore>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -135,7 +123,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, ListOperation<string>, TagsStore>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -161,7 +149,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, ListOperation<string>, TagsStore>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -187,7 +175,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, ListOperation<string>, TagsStore>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -210,7 +198,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, ListOperation<string>, TagsStore>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();

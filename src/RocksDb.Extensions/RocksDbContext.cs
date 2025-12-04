@@ -8,7 +8,6 @@ internal class RocksDbContext : IDisposable
     private readonly RocksDbSharp.RocksDb _rocksDb;
     private readonly Cache _cache;
     private readonly ColumnFamilyOptions _userSpecifiedOptions;
-    private readonly List<MergeOperator> _mergeOperators = new();
 
     private const long BlockCacheSize = 50 * 1024 * 1024L;
     private const long BlockSize = 4096L;
@@ -113,8 +112,6 @@ internal class RocksDbContext : IDisposable
                     mergeOperatorConfig.PartialMerge,
                     mergeOperatorConfig.FullMerge);
                 
-                // Keep reference to prevent GC
-                _mergeOperators.Add(mergeOp);
                 
                 cfOptions.SetMergeOperator(mergeOp);
                 columnFamilies.Add(columnFamilyName, cfOptions);

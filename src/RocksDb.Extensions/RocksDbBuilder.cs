@@ -51,7 +51,7 @@ internal class RocksDbBuilder : IRocksDbBuilder
         return this;
     }
 
-    public IRocksDbBuilder AddMergeableStore<TKey, TValue, TOperand, TStore>(string columnFamily, IMergeOperator<TValue, TOperand> mergeOperator) 
+    public IRocksDbBuilder AddMergeableStore<TKey, TValue, TStore, TOperand>(string columnFamily, IMergeOperator<TValue, TOperand> mergeOperator) 
         where TStore : MergeableRocksDbStore<TKey, TValue, TOperand>
     {
         if (!_columnFamilyLookup.Add(columnFamily))
@@ -78,21 +78,15 @@ internal class RocksDbBuilder : IRocksDbBuilder
             var valueSerializer = CreateSerializer<TValue>(rocksDbOptions.Value.SerializerFactories);
             var operandSerializer = CreateSerializer<TOperand>(rocksDbOptions.Value.SerializerFactories);
             
-            var rocksDbAccessor = new RocksDbAccessor<TKey, TValue>(
+            var rocksDbAccessor = new MergeAccessor<TKey, TValue, TOperand>(
                 rocksDbContext,
                 new ColumnFamily(columnFamilyHandle, columnFamily),
                 keySerializer,
-                valueSerializer
-            );
-            
-            var mergeAccessor = new MergeAccessor<TKey, TOperand>(
-                rocksDbContext.Db,
-                columnFamilyHandle,
-                keySerializer,
+                valueSerializer,
                 operandSerializer
             );
             
-            return ActivatorUtilities.CreateInstance<TStore>(provider, rocksDbAccessor, mergeAccessor);
+            return ActivatorUtilities.CreateInstance<TStore>(provider, rocksDbAccessor);
         });
         
         _serviceCollection.TryAddSingleton(typeof(TStore), provider => provider.GetRequiredKeyedService<TStore>(columnFamily));

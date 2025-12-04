@@ -1,27 +1,19 @@
 using System.Buffers;
 using CommunityToolkit.HighPerformance.Buffers;
-using RocksDbSharp;
 
 namespace RocksDb.Extensions;
 
-internal class MergeAccessor<TKey, TOperand> : IMergeAccessor<TKey, TOperand>
+internal class MergeAccessor<TKey, TValue, TOperand> : RocksDbAccessor<TKey, TValue>, IMergeAccessor<TKey, TValue, TOperand>
 {
-    private const int MaxStackSize = 256;
-
-    private readonly ISerializer<TKey> _keySerializer;
     private readonly ISerializer<TOperand> _operandSerializer;
-    private readonly RocksDbSharp.RocksDb _db;
-    private readonly ColumnFamilyHandle _columnFamilyHandle;
 
     public MergeAccessor(
-        RocksDbSharp.RocksDb db,
-        ColumnFamilyHandle columnFamilyHandle,
+        RocksDbContext db,
+        ColumnFamily columnFamily,
         ISerializer<TKey> keySerializer,
-        ISerializer<TOperand> operandSerializer)
+        ISerializer<TValue> valueSerializer,
+        ISerializer<TOperand> operandSerializer) : base(db, columnFamily, keySerializer, valueSerializer)
     {
-        _db = db;
-        _columnFamilyHandle = columnFamilyHandle;
-        _keySerializer = keySerializer;
         _operandSerializer = operandSerializer;
     }
 
@@ -76,7 +68,7 @@ internal class MergeAccessor<TKey, TOperand> : IMergeAccessor<TKey, TOperand>
                 operandSpan = operandBufferWriter.WrittenSpan;
             }
 
-            _db.Merge(keySpan, operandSpan, _columnFamilyHandle);
+            _rocksDbContext.Db.Merge(keySpan, operandSpan, _columnFamily.Handle);
         }
         finally
         {

@@ -9,7 +9,7 @@ namespace RocksDb.Extensions;
 /// It provides merge operation support with a separate operand type.
 /// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public interface IMergeAccessor<in TKey, in TOperand>
+public interface IMergeAccessor<TKey, TValue, in TOperand> : IRocksDbAccessor<TKey, TValue>
 {
     void Merge(TKey key, TOperand operand);
 }

@@ -53,6 +53,6 @@ public interface IRocksDbBuilder
     /// For stores that don't need merge operations, use <see cref="AddStore{TKey,TValue,TStore}(string)"/> instead.
     /// </para>
     /// </remarks>
-    IRocksDbBuilder AddMergeableStore<TKey, TValue, TOperand, TStore>(string columnFamily, IMergeOperator<TValue, TOperand> mergeOperator) 
+    IRocksDbBuilder AddMergeableStore<TKey, TValue, TStore, TOperand>(string columnFamily, IMergeOperator<TValue, TOperand> mergeOperator) 
         where TStore : MergeableRocksDbStore<TKey, TValue, TOperand>;
 }
