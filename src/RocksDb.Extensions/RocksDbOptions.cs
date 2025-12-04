@@ -34,6 +34,11 @@ public class RocksDbOptions
     internal List<string> ColumnFamilies { get; } = new();
 
     /// <summary>
+    /// Internal dictionary of merge operators per column family.
+    /// </summary>
+    internal Dictionary<string, MergeOperatorConfig> MergeOperators { get; } = new(StringComparer.InvariantCultureIgnoreCase);
+
+    /// <summary>
     /// Enables direct I/O mode for reads, which bypasses the OS page cache.
     /// </summary>
     /// <remarks>

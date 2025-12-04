@@ -23,6 +23,7 @@ public interface IRocksDbAccessor<TKey, TValue>
     bool HasKey(TKey key);
     void Clear();
     int Count();
+    void Merge(TKey key, TValue operand);
 }
 
 #pragma warning restore CS1591

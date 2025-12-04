@@ -8,6 +8,7 @@ internal class RocksDbContext : IDisposable
     private readonly RocksDbSharp.RocksDb _rocksDb;
     private readonly Cache _cache;
     private readonly ColumnFamilyOptions _userSpecifiedOptions;
+    private readonly List<MergeOperator> _mergeOperators = new();
 
     private const long BlockCacheSize = 50 * 1024 * 1024L;
     private const long BlockSize = 4096L;
@@ -56,7 +57,7 @@ internal class RocksDbContext : IDisposable
 
         _userSpecifiedOptions.EnableStatistics();
 
-        var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies, _userSpecifiedOptions);
+        var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies, options.Value.MergeOperators, _userSpecifiedOptions);
 
         if (options.Value.DeleteExistingDatabaseOnStartup)
         {
@@ -76,13 +77,52 @@ internal class RocksDbContext : IDisposable
 
     public ColumnFamilyOptions ColumnFamilyOptions => _userSpecifiedOptions;
 
-    private static ColumnFamilies CreateColumnFamilies(IReadOnlyList<string> columnFamilyNames,
-        ColumnFamilyOptions columnFamilyOptions)
+    private ColumnFamilies CreateColumnFamilies(
+        IReadOnlyList<string> columnFamilyNames,
+        IReadOnlyDictionary<string, MergeOperatorConfig> mergeOperators,
+        ColumnFamilyOptions defaultColumnFamilyOptions)
     {
-        var columnFamilies = new ColumnFamilies(columnFamilyOptions);
+        var columnFamilies = new ColumnFamilies(defaultColumnFamilyOptions);
         foreach (var columnFamilyName in columnFamilyNames)
         {
-            columnFamilies.Add(columnFamilyName, columnFamilyOptions);
+            if (mergeOperators.TryGetValue(columnFamilyName, out var mergeOperatorConfig))
+            {
+                // Create a copy of the default options for this column family
+                var cfOptions = new ColumnFamilyOptions();
+                
+                // Apply the same settings as the default options
+                var tableConfig = new BlockBasedTableOptions();
+                tableConfig.SetBlockCache(_cache);
+                tableConfig.SetBlockSize(BlockSize);
+                var filter = BloomFilterPolicy.Create();
+                tableConfig.SetFilterPolicy(filter);
+                cfOptions.SetBlockBasedTableFactory(tableConfig);
+                cfOptions.SetWriteBufferSize(WriteBufferSize);
+                cfOptions.SetCompression(Compression.No);
+                cfOptions.SetCompactionStyle(Compaction.Universal);
+                cfOptions.SetMaxWriteBufferNumberToMaintain(MaxWriteBuffers);
+                cfOptions.SetCreateIfMissing();
+                cfOptions.SetCreateMissingColumnFamilies();
+                cfOptions.SetErrorIfExists(false);
+                cfOptions.SetInfoLogLevel(InfoLogLevel.Error);
+                cfOptions.EnableStatistics();
+
+                // Create and set the merge operator
+                var mergeOp = MergeOperators.CreateAssociative(
+                    mergeOperatorConfig.Name,
+                    mergeOperatorConfig.FullMerge,
+                    mergeOperatorConfig.PartialMerge);
+                
+                // Keep reference to prevent GC
+                _mergeOperators.Add(mergeOp);
+                
+                cfOptions.SetMergeOperator(mergeOp);
+                columnFamilies.Add(columnFamilyName, cfOptions);
+            }
+            else
+            {
+                columnFamilies.Add(columnFamilyName, defaultColumnFamilyOptions);
+            }
         }
 
         return columnFamilies;

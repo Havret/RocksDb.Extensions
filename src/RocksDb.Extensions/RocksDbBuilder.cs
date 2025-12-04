@@ -1,7 +1,10 @@
+using System.Buffers;
 using System.Reflection;
+using CommunityToolkit.HighPerformance.Buffers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using RocksDbSharp;
 
 namespace RocksDb.Extensions;
 
@@ -17,12 +20,32 @@ internal class RocksDbBuilder : IRocksDbBuilder
 
     public IRocksDbBuilder AddStore<TKey, TValue, TStore>(string columnFamily) where TStore : RocksDbStore<TKey, TValue>
     {
+        return AddStoreInternal<TKey, TValue, TStore>(columnFamily, null);
+    }
+
+    public IRocksDbBuilder AddStore<TKey, TValue, TStore>(string columnFamily, IMergeOperator<TValue> mergeOperator) where TStore : RocksDbStore<TKey, TValue>
+    {
+        return AddStoreInternal<TKey, TValue, TStore>(columnFamily, mergeOperator);
+    }
+
+    private IRocksDbBuilder AddStoreInternal<TKey, TValue, TStore>(string columnFamily, IMergeOperator<TValue>? mergeOperator) where TStore : RocksDbStore<TKey, TValue>
+    {
         if (!_columnFamilyLookup.Add(columnFamily))
         {
             throw new InvalidOperationException($"{columnFamily} is already registered.");
         }
 
-        _ = _serviceCollection.Configure<RocksDbOptions>(options => { options.ColumnFamilies.Add(columnFamily); });
+        _ = _serviceCollection.Configure<RocksDbOptions>(options =>
+        {
+            options.ColumnFamilies.Add(columnFamily);
+
+            if (mergeOperator != null)
+            {
+                var valueSerializer = CreateSerializer<TValue>(options.SerializerFactories);
+                var config = CreateMergeOperatorConfig(mergeOperator, valueSerializer);
+                options.MergeOperators[columnFamily] = config;
+            }
+        });
         
         _serviceCollection.AddKeyedSingleton<TStore>(columnFamily, (provider, _) =>
         {
@@ -43,6 +66,84 @@ internal class RocksDbBuilder : IRocksDbBuilder
         _serviceCollection.TryAddSingleton(typeof(TStore), provider => provider.GetRequiredKeyedService<TStore>(columnFamily));
         
         return this;
+    }
+
+    private static MergeOperatorConfig CreateMergeOperatorConfig<TValue>(IMergeOperator<TValue> mergeOperator, ISerializer<TValue> valueSerializer)
+    {
+        return new MergeOperatorConfig
+        {
+            Name = mergeOperator.Name,
+            ValueSerializer = valueSerializer,
+            FullMerge = (key, existingValue, operands) => FullMergeCallback(key, existingValue, operands, mergeOperator, valueSerializer),
+            PartialMerge = (key, operands) => PartialMergeCallback(key, operands, mergeOperator, valueSerializer)
+        };
+    }
+
+    private static byte[] FullMergeCallback<TValue>(
+        ReadOnlySpan<byte> key,
+        ReadOnlySpan<byte> existingValue,
+        ReadOnlySpan<MergeValue> operands,
+        IMergeOperator<TValue> mergeOperator,
+        ISerializer<TValue> valueSerializer)
+    {
+        // Deserialize existing value if present
+        TValue? existing = existingValue.IsEmpty ? default : valueSerializer.Deserialize(existingValue);
+
+        // Deserialize all operands
+        var operandList = new List<TValue>(operands.Length);
+        foreach (var operand in operands)
+        {
+            operandList.Add(valueSerializer.Deserialize(operand.AsSpan()));
+        }
+
+        // Call the user's merge operator
+        var result = mergeOperator.FullMerge(key, existing, operandList);
+
+        // Serialize the result
+        return SerializeValue(result, valueSerializer);
+    }
+
+    private static byte[]? PartialMergeCallback<TValue>(
+        ReadOnlySpan<byte> key,
+        ReadOnlySpan<MergeValue> operands,
+        IMergeOperator<TValue> mergeOperator,
+        ISerializer<TValue> valueSerializer)
+    {
+        // Deserialize all operands
+        var operandList = new List<TValue>(operands.Length);
+        foreach (var operand in operands)
+        {
+            operandList.Add(valueSerializer.Deserialize(operand.AsSpan()));
+        }
+
+        // Call the user's partial merge operator
+        var result = mergeOperator.PartialMerge(key, operandList);
+
+        // If partial merge is not supported, return null
+        if (result == null)
+        {
+            return null;
+        }
+
+        // Serialize the result
+        return SerializeValue(result, valueSerializer);
+    }
+
+    private static byte[] SerializeValue<TValue>(TValue value, ISerializer<TValue> valueSerializer)
+    {
+        if (valueSerializer.TryCalculateSize(ref value, out var size))
+        {
+            var buffer = new byte[size];
+            var span = buffer.AsSpan();
+            valueSerializer.WriteTo(ref value, ref span);
+            return buffer;
+        }
+        else
+        {
+            using var bufferWriter = new ArrayPoolBufferWriter<byte>();
+            valueSerializer.WriteTo(ref value, bufferWriter);
+            return bufferWriter.WrittenSpan.ToArray();
+        }
     }
 
     private static ISerializer<T> CreateSerializer<T>(IReadOnlyList<ISerializerFactory> serializerFactories)
