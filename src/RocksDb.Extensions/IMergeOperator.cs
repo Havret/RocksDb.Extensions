@@ -19,10 +19,10 @@ public interface IMergeOperator<TValue>
     /// Called when a Get operation encounters merge operands and needs to produce the final value.
     /// </summary>
     /// <param name="key">The key being merged.</param>
-    /// <param name="existingValue">The existing value in the database, or null if no value exists.</param>
+    /// <param name="existingValue">The existing value in the database. For value types, this will be default if no value exists (check hasExistingValue).</param>
     /// <param name="operands">The list of merge operands to apply, in order.</param>
     /// <returns>The merged value.</returns>
-    TValue FullMerge(ReadOnlySpan<byte> key, TValue? existingValue, IReadOnlyList<TValue> operands);
+    TValue FullMerge(ReadOnlySpan<byte> key, TValue existingValue, IReadOnlyList<TValue> operands);
 
     /// <summary>
     /// Performs a partial merge of multiple operands without the existing value.
@@ -32,8 +32,8 @@ public interface IMergeOperator<TValue>
     /// <param name="key">The key being merged.</param>
     /// <param name="operands">The list of merge operands to combine, in order.</param>
     /// <returns>
-    /// The combined operand if partial merge is possible; otherwise, null to indicate
+    /// The combined operand if partial merge is possible; otherwise, default to indicate
     /// that partial merge is not supported and operands should be kept separate.
     /// </returns>
-    TValue? PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<TValue> operands);
+    TValue PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<TValue> operands);
 }

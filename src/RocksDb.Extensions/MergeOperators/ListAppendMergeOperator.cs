@@ -27,7 +27,7 @@ public class ListAppendMergeOperator<T> : IMergeOperator<IList<T>>
     public string Name => $"ListAppendMergeOperator<{typeof(T).Name}>";
 
     /// <inheritdoc />
-    public IList<T> FullMerge(ReadOnlySpan<byte> key, IList<T>? existingValue, IReadOnlyList<IList<T>> operands)
+    public IList<T> FullMerge(ReadOnlySpan<byte> key, IList<T> existingValue, IReadOnlyList<IList<T>> operands)
     {
         var result = existingValue != null ? new List<T>(existingValue) : new List<T>();
         
@@ -43,7 +43,7 @@ public class ListAppendMergeOperator<T> : IMergeOperator<IList<T>>
     }
 
     /// <inheritdoc />
-    public IList<T>? PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<IList<T>> operands)
+    public IList<T> PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<IList<T>> operands)
     {
         var result = new List<T>();
         

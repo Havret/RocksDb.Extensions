@@ -15,12 +15,12 @@ internal class MergeOperatorConfig
     /// <summary>
     /// Gets the full merge callback delegate.
     /// </summary>
-    public MergeOperators.FullMergeFunc FullMerge { get; set; } = null!;
+    public global::RocksDbSharp.MergeOperators.FullMergeFunc FullMerge { get; set; } = null!;
 
     /// <summary>
     /// Gets the partial merge callback delegate.
     /// </summary>
-    public MergeOperators.PartialMergeFunc PartialMerge { get; set; } = null!;
+    public global::RocksDbSharp.MergeOperators.PartialMergeFunc PartialMerge { get; set; } = null!;
 
     /// <summary>
     /// Gets the value serializer for deserializing and serializing values.

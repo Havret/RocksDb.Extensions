@@ -30,7 +30,7 @@ internal class RocksDbContext : IDisposable
         _userSpecifiedOptions.SetWriteBufferSize(WriteBufferSize);
         _userSpecifiedOptions.SetCompression(Compression.No);
         _userSpecifiedOptions.SetCompactionStyle(Compaction.Universal);
-        _userSpecifiedOptions.SetMaxWriteBufferNumberToMaintain(MaxWriteBuffers);
+        _userSpecifiedOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
         _userSpecifiedOptions.SetCreateIfMissing();
         _userSpecifiedOptions.SetCreateMissingColumnFamilies();
         _userSpecifiedOptions.SetErrorIfExists(false);
@@ -100,7 +100,7 @@ internal class RocksDbContext : IDisposable
                 cfOptions.SetWriteBufferSize(WriteBufferSize);
                 cfOptions.SetCompression(Compression.No);
                 cfOptions.SetCompactionStyle(Compaction.Universal);
-                cfOptions.SetMaxWriteBufferNumberToMaintain(MaxWriteBuffers);
+                cfOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
                 cfOptions.SetCreateIfMissing();
                 cfOptions.SetCreateMissingColumnFamilies();
                 cfOptions.SetErrorIfExists(false);
@@ -108,7 +108,7 @@ internal class RocksDbContext : IDisposable
                 cfOptions.EnableStatistics();
 
                 // Create and set the merge operator
-                var mergeOp = MergeOperators.Create(
+                var mergeOp = global::RocksDbSharp.MergeOperators.Create(
                     mergeOperatorConfig.Name,
                     mergeOperatorConfig.PartialMerge,
                     mergeOperatorConfig.FullMerge);
