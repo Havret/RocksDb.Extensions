@@ -108,10 +108,10 @@ internal class RocksDbContext : IDisposable
                 cfOptions.EnableStatistics();
 
                 // Create and set the merge operator
-                var mergeOp = MergeOperators.CreateAssociative(
+                var mergeOp = MergeOperators.Create(
                     mergeOperatorConfig.Name,
-                    mergeOperatorConfig.FullMerge,
-                    mergeOperatorConfig.PartialMerge);
+                    mergeOperatorConfig.PartialMerge,
+                    mergeOperatorConfig.FullMerge);
                 
                 // Keep reference to prevent GC
                 _mergeOperators.Add(mergeOp);

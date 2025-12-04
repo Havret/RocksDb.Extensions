@@ -10,20 +10,20 @@ internal class MergeOperatorConfig
     /// <summary>
     /// Gets the name of the merge operator.
     /// </summary>
-    public required string Name { get; init; }
+    public string Name { get; set; } = null!;
 
     /// <summary>
     /// Gets the full merge callback delegate.
     /// </summary>
-    public required MergeOperator.FullMergeImpl FullMerge { get; init; }
+    public MergeOperators.FullMergeFunc FullMerge { get; set; } = null!;
 
     /// <summary>
     /// Gets the partial merge callback delegate.
     /// </summary>
-    public required MergeOperator.PartialMergeImpl PartialMerge { get; init; }
+    public MergeOperators.PartialMergeFunc PartialMerge { get; set; } = null!;
 
     /// <summary>
     /// Gets the value serializer for deserializing and serializing values.
     /// </summary>
-    public required object ValueSerializer { get; init; }
+    public object ValueSerializer { get; set; } = null!;
 }
