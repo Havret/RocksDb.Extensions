@@ -39,6 +39,12 @@ internal class VariableSizeListSerializer<T> : ISerializer<IList<T>>
                 size += sizeof(int);
                 size += elementSize;
             }
+            else
+            {
+                // Element serializer can't calculate size, so we can't either
+                size = 0;
+                return false;
+            }
         }
 
         return true;

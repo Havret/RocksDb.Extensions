@@ -5,9 +5,9 @@ namespace RocksDb.Extensions;
 
 internal class RocksDbContext : IDisposable
 {
-    private readonly RocksDbSharp.RocksDb _rocksDb;
+    private readonly WriteOptions _writeOptions;
+    private readonly Dictionary<string, MergeOperatorConfig> _mergeOperators;
     private readonly Cache _cache;
-    private readonly ColumnFamilyOptions _userSpecifiedOptions;
 
     private const long BlockCacheSize = 50 * 1024 * 1024L;
     private const long BlockSize = 4096L;
@@ -17,23 +17,7 @@ internal class RocksDbContext : IDisposable
     public RocksDbContext(IOptions<RocksDbOptions> options)
     {
         var dbOptions = new DbOptions();
-        _userSpecifiedOptions = new ColumnFamilyOptions();
-        var tableConfig = new BlockBasedTableOptions();
         _cache = Cache.CreateLru(BlockCacheSize);
-        tableConfig.SetBlockCache(_cache);
-        tableConfig.SetBlockSize(BlockSize);
-
-        var filter = BloomFilterPolicy.Create();
-        tableConfig.SetFilterPolicy(filter);
-        _userSpecifiedOptions.SetBlockBasedTableFactory(tableConfig);
-        _userSpecifiedOptions.SetWriteBufferSize(WriteBufferSize);
-        _userSpecifiedOptions.SetCompression(Compression.No);
-        _userSpecifiedOptions.SetCompactionStyle(Compaction.Universal);
-        _userSpecifiedOptions.SetMaxWriteBufferNumberToMaintain(MaxWriteBuffers);
-        _userSpecifiedOptions.SetCreateIfMissing();
-        _userSpecifiedOptions.SetCreateMissingColumnFamilies();
-        _userSpecifiedOptions.SetErrorIfExists(false);
-        _userSpecifiedOptions.SetInfoLogLevel(InfoLogLevel.Error);
 
         // this is the recommended way to increase parallelism in RocksDb
         // note that the current implementation of setIncreaseParallelism affects the number
@@ -45,25 +29,38 @@ internal class RocksDbContext : IDisposable
         dbOptions.IncreaseParallelism(Math.Max(Environment.ProcessorCount, 2));
         dbOptions.SetCreateIfMissing();
         dbOptions.SetCreateMissingColumnFamilies();
+        dbOptions.SetErrorIfExists(false);
+        dbOptions.SetInfoLogLevel(InfoLogLevel.Error);
         dbOptions.SetUseDirectReads(options.Value.UseDirectReads);
         dbOptions.SetUseDirectIoForFlushAndCompaction(options.Value.UseDirectIoForFlushAndCompaction);
+        dbOptions.EnableStatistics();
+        dbOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
+        dbOptions.SetWriteBufferSize(WriteBufferSize);
+        dbOptions.SetCompression(Compression.No);
+        dbOptions.SetCompactionStyle(Compaction.Universal);
+        
+        var tableConfig = new BlockBasedTableOptions();
+        tableConfig.SetBlockCache(_cache);
+        tableConfig.SetBlockSize(BlockSize);
+        
+        var filter = BloomFilterPolicy.Create();
+        tableConfig.SetFilterPolicy(filter);
+        
+        dbOptions.SetBlockBasedTableFactory(tableConfig);
+        
+        _writeOptions = new WriteOptions();
+        _writeOptions.DisableWal(1);
 
-        var fOptions = new FlushOptions();
-        fOptions.SetWaitForFlush(options.Value.WaitForFlush);
-
-        var writeOptions = new WriteOptions();
-        writeOptions.DisableWal(1);
-
-        _userSpecifiedOptions.EnableStatistics();
-
-        var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies, _userSpecifiedOptions);
+        _mergeOperators = options.Value.MergeOperators;
+        
+        var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies);
 
         if (options.Value.DeleteExistingDatabaseOnStartup)
         {
             DestroyDatabase(options.Value.Path);
         }
 
-        _rocksDb = RocksDbSharp.RocksDb.Open(dbOptions, options.Value.Path, columnFamilies);
+        Db = RocksDbSharp.RocksDb.Open(dbOptions, options.Value.Path, columnFamilies);
     }
 
     private static void DestroyDatabase(string path)
@@ -72,16 +69,33 @@ internal class RocksDbContext : IDisposable
         Native.Instance.rocksdb_destroy_db(dbOptions.Handle, path);
     }
 
-    public RocksDbSharp.RocksDb Db => _rocksDb;
+    public RocksDbSharp.RocksDb Db { get; }
 
-    public ColumnFamilyOptions ColumnFamilyOptions => _userSpecifiedOptions;
+    public WriteOptions WriteOptions => _writeOptions;
 
-    private static ColumnFamilies CreateColumnFamilies(IReadOnlyList<string> columnFamilyNames,
-        ColumnFamilyOptions columnFamilyOptions)
+    public ColumnFamilyOptions CreateColumnFamilyOptions(string columnFamilyName)
     {
-        var columnFamilies = new ColumnFamilies(columnFamilyOptions);
+        var cfOptions = new ColumnFamilyOptions();
+        if (_mergeOperators.TryGetValue(columnFamilyName, out var mergeOperatorConfig))
+        {
+            var mergeOp = global::RocksDbSharp.MergeOperators.Create(
+                mergeOperatorConfig.Name,
+                mergeOperatorConfig.PartialMerge,
+                mergeOperatorConfig.FullMerge);
+
+            cfOptions.SetMergeOperator(mergeOp);
+        }
+
+        return cfOptions;
+    }
+
+
+    private ColumnFamilies CreateColumnFamilies(IReadOnlyList<string> columnFamilyNames)
+    {
+        var columnFamilies = new ColumnFamilies();
         foreach (var columnFamilyName in columnFamilyNames)
         {
+            var columnFamilyOptions = CreateColumnFamilyOptions(columnFamilyName);
             columnFamilies.Add(columnFamilyName, columnFamilyOptions);
         }
 

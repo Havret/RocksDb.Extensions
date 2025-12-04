@@ -27,6 +27,6 @@
         <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.3" />
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.3" />
-        <PackageReference Include="RocksDB" Version="9.10.0.55496" />
+        <PackageReference Include="RocksDB" Version="10.4.2.63147" />
     </ItemGroup>
 </Project>
