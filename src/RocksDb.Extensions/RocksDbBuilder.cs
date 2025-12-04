@@ -22,7 +22,10 @@ internal class RocksDbBuilder : IRocksDbBuilder
             throw new InvalidOperationException($"{columnFamily} is already registered.");
         }
 
-        _ = _serviceCollection.Configure<RocksDbOptions>(options => { options.ColumnFamilies.Add(columnFamily); });
+        _ = _serviceCollection.Configure<RocksDbOptions>(options =>
+        {
+            options.ColumnFamilies.Add(columnFamily);
+        });
         
         _serviceCollection.AddKeyedSingleton<TStore>(columnFamily, (provider, _) =>
         {
@@ -31,12 +34,56 @@ internal class RocksDbBuilder : IRocksDbBuilder
             var rocksDbOptions = provider.GetRequiredService<IOptions<RocksDbOptions>>();
             var keySerializer = CreateSerializer<TKey>(rocksDbOptions.Value.SerializerFactories);
             var valueSerializer = CreateSerializer<TValue>(rocksDbOptions.Value.SerializerFactories);
+            
             var rocksDbAccessor = new RocksDbAccessor<TKey, TValue>(
                 rocksDbContext,
                 new ColumnFamily(columnFamilyHandle, columnFamily),
                 keySerializer,
                 valueSerializer
             );
+            return ActivatorUtilities.CreateInstance<TStore>(provider, rocksDbAccessor);
+        });
+        
+        _serviceCollection.TryAddSingleton(typeof(TStore), provider => provider.GetRequiredKeyedService<TStore>(columnFamily));
+        
+        return this;
+    }
+
+    public IRocksDbBuilder AddMergeableStore<TKey, TValue, TStore, TOperand>(string columnFamily, IMergeOperator<TValue, TOperand> mergeOperator) 
+        where TStore : MergeableRocksDbStore<TKey, TValue, TOperand>
+    {
+        if (!_columnFamilyLookup.Add(columnFamily))
+        {
+            throw new InvalidOperationException($"{columnFamily} is already registered.");
+        }
+
+        _ = _serviceCollection.Configure<RocksDbOptions>(options =>
+        {
+            options.ColumnFamilies.Add(columnFamily);
+
+            var valueSerializer = CreateSerializer<TValue>(options.SerializerFactories);
+            var operandSerializer = CreateSerializer<TOperand>(options.SerializerFactories);
+            var config = MergeOperatorConfig.CreateMergeOperatorConfig(mergeOperator, valueSerializer, operandSerializer);
+            options.MergeOperators[columnFamily] = config;
+        });
+        
+        _serviceCollection.AddKeyedSingleton<TStore>(columnFamily, (provider, _) =>
+        {
+            var rocksDbContext = provider.GetRequiredService<RocksDbContext>();
+            var columnFamilyHandle = rocksDbContext.Db.GetColumnFamily(columnFamily);
+            var rocksDbOptions = provider.GetRequiredService<IOptions<RocksDbOptions>>();
+            var keySerializer = CreateSerializer<TKey>(rocksDbOptions.Value.SerializerFactories);
+            var valueSerializer = CreateSerializer<TValue>(rocksDbOptions.Value.SerializerFactories);
+            var operandSerializer = CreateSerializer<TOperand>(rocksDbOptions.Value.SerializerFactories);
+            
+            var rocksDbAccessor = new MergeAccessor<TKey, TValue, TOperand>(
+                rocksDbContext,
+                new ColumnFamily(columnFamilyHandle, columnFamily),
+                keySerializer,
+                valueSerializer,
+                operandSerializer
+            );
+            
             return ActivatorUtilities.CreateInstance<TStore>(provider, rocksDbAccessor);
         });
         
@@ -70,11 +117,25 @@ internal class RocksDbBuilder : IRocksDbBuilder
             if (elementType.IsPrimitive)
             {
                 // Use fixed size list serializer for primitive types
-                return (ISerializer<T>) Activator.CreateInstance(typeof(FixedSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer);
+                return (ISerializer<T>) Activator.CreateInstance(typeof(FixedSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
             }
 
             // Use variable size list serializer for non-primitive types
-            return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer);
+            return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
+        }
+
+        // Handle CollectionOperation<T> for the ListMergeOperator
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(MergeOperators.CollectionOperation<>))
+        {
+            var itemType = type.GetGenericArguments()[0];
+            
+            // Create the item serializer
+            var itemSerializer = typeof(RocksDbBuilder).GetMethod(nameof(CreateSerializer), BindingFlags.NonPublic | BindingFlags.Static)
+                ?.MakeGenericMethod(itemType)
+                .Invoke(null, new object[] { serializerFactories });
+            
+            // Create ListOperationSerializer<itemType>
+            return (ISerializer<T>) Activator.CreateInstance(typeof(ListOperationSerializer<>).MakeGenericType(itemType), itemSerializer)!;
         }
 
         throw new InvalidOperationException($"Type {type.FullName} cannot be used as RocksDbStore key/value. " +

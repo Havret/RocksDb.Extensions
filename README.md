@@ -175,3 +175,183 @@ Example types that work automatically with this support:
 
 - Protocol Buffer message types: `IList<YourProtobufMessage>`
 - Primitive types: `IList<int>`, `IList<long>`, `IList<string>`, etc.
+
+## Merge Operators
+
+RocksDb.Extensions provides powerful support for RocksDB's merge operators, enabling efficient atomic read-modify-write operations without requiring separate read and write operations. This is particularly useful for counters, list operations, and other accumulative data structures.
+
+### What are Merge Operators?
+
+Merge operators allow you to apply atomic transformations to values in RocksDB without needing to:
+1. Read the current value
+2. Modify it in your application code
+3. Write it back
+
+Instead, you submit a "merge operand" (the change to apply), and RocksDB handles the merge internally. This provides several benefits:
+
+- **Performance**: Eliminates the round-trip read before write
+- **Atomicity**: Operations are applied atomically at the database level
+- **Correctness**: Avoids race conditions in concurrent scenarios
+- **Efficiency**: Merge operands can be combined during compaction
+
+### Creating a Mergeable Store
+
+To use merge operators, inherit from `MergeableRocksDbStore<TKey, TValue, TOperand>` instead of `RocksDbStore<TKey, TValue>`:
+
+```csharp
+public class TagsStore : MergeableRocksDbStore<string, IList<string>, CollectionOperation<string>>
+{
+    public TagsStore(IMergeAccessor<string, IList<string>, CollectionOperation<string>> mergeAccessor) 
+        : base(mergeAccessor) { }
+    
+    public void AddTags(string key, params string[] tags)
+    {
+        Merge(key, CollectionOperation<string>.Add(tags));
+    }
+    
+    public void RemoveTags(string key, params string[] tags)
+    {
+        Merge(key, CollectionOperation<string>.Remove(tags));
+    }
+}
+```
+
+Key differences from regular stores:
+- Three type parameters: `TKey`, `TValue`, and `TOperand`
+- `TValue` is the actual value stored in the database
+- `TOperand` is the merge operand (the change/delta to apply)
+- `Merge()` method for applying operations
+
+### Registering a Mergeable Store
+
+Register your mergeable store with a merge operator implementation:
+
+```csharp
+rocksDbBuilder.AddMergeableStore<string, IList<string>, TagsStore, CollectionOperation<string>>(
+    columnFamily: "tags", 
+    mergeOperator: new ListMergeOperator<string>()
+);
+```
+
+### Built-in Merge Operator: ListMergeOperator
+
+The library includes `ListMergeOperator<T>` for atomic list operations with add/remove support:
+
+**Features:**
+- Add multiple items to a list atomically
+- Remove multiple items from a list atomically
+- Operations are applied in order
+- Removes only the first occurrence of each item (like `List<T>.Remove()`)
+- Non-existent items in remove operations are silently ignored
+- Efficient partial merge: combines multiple Add operations during compaction
+
+**Example Usage:**
+
+```csharp
+// Add tags without reading the current list
+tagsStore.AddTags("article-1", "csharp", "dotnet", "rocksdb");
+
+// Remove specific tags
+tagsStore.RemoveTags("article-1", "rocksdb");
+
+// Read the current value
+if (tagsStore.TryGet("article-1", out var tags))
+{
+    // tags now contains: ["csharp", "dotnet"]
+}
+```
+
+### Creating Custom Merge Operators
+
+You can create custom merge operators by implementing `IMergeOperator<TValue, TOperand>`:
+
+```csharp
+public class CounterMergeOperator : IMergeOperator<long, long>
+{
+    public string Name => "CounterMergeOperator";
+    
+    public (bool Success, long Value) FullMerge(long? existingValue, ReadOnlySpan<long> operands)
+    {
+        var result = existingValue ?? 0;
+        foreach (var operand in operands)
+        {
+            result += operand;
+        }
+        return (true, result);
+    }
+    
+    public (bool Success, long? Operand) PartialMerge(ReadOnlySpan<long> operands)
+    {
+        // Counters are commutative - we can combine all increments
+        long sum = 0;
+        foreach (var operand in operands)
+        {
+            sum += operand;
+        }
+        return (true, sum);
+    }
+}
+
+// Usage in a store
+public class CounterStore : MergeableRocksDbStore<string, long, long>
+{
+    public CounterStore(IMergeAccessor<string, long, long> mergeAccessor) 
+        : base(mergeAccessor) { }
+    
+    public void Increment(string key, long delta = 1) => Merge(key, delta);
+    public void Decrement(string key, long delta = 1) => Merge(key, -delta);
+}
+
+// Registration
+rocksDbBuilder.AddMergeableStore<string, long, CounterStore, long>(
+    "counters", 
+    new CounterMergeOperator()
+);
+```
+
+### Understanding IMergeOperator Methods
+
+**FullMerge:**
+- Called during Get operations to produce the final value
+- Receives the existing value (or null/default) and all pending merge operands
+- Must apply all operands in order and return the final result
+- Returns `(bool Success, TValue Value)` - Success=false indicates merge failure
+
+**PartialMerge:**
+- Called during compaction to optimize storage
+- Combines multiple operands without knowing the existing value
+- Returns `(bool Success, TOperand? Operand)`:
+  - Success=true: operands were successfully combined
+  - Success=false: operands cannot be safely combined (RocksDB keeps them separate)
+- Optimization only - if partial merge fails, RocksDB will call FullMerge later
+
+**When to return Success=false in PartialMerge:**
+- Operations are order-dependent (like Add followed by Remove)
+- Operations require knowledge of the existing value
+- Operations cannot be combined safely
+
+### Use Cases for Merge Operators
+
+1. **Counters**: Increment/decrement without reading
+   - `TValue=long`, `TOperand=long`
+
+2. **List Append**: Add items to lists
+   - `TValue=IList<T>`, `TOperand=IList<T>` or `CollectionOperation<T>`
+
+3. **Set Operations**: Union, intersection, difference
+   - `TValue=ISet<T>`, `TOperand=SetOperation<T>`
+
+4. **JSON Updates**: Merge JSON objects or arrays
+   - `TValue=JsonDocument`, `TOperand=JsonPatch`
+
+5. **Time Series**: Append time-stamped events
+   - `TValue=IList<Event>`, `TOperand=Event`
+
+### Best Practices
+
+- Use merge operators when you need atomic updates without reading first
+- Implement PartialMerge for commutative/associative operations to improve compaction efficiency
+- Return Success=false in PartialMerge when operations cannot be safely combined
+- The merge operator's `Name` property must remain consistent across database opens
+- Test your merge operators thoroughly, especially edge cases with null/empty values
+- Consider serialization overhead - simpler operands often perform better
