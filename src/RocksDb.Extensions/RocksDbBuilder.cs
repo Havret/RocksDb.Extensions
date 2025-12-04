@@ -109,20 +109,18 @@ internal class RocksDbBuilder : IRocksDbBuilder
         {
             Name = mergeOperator.Name,
             ValueSerializer = valueSerializer,
-            FullMerge = (ReadOnlySpan<byte> key, bool hasExistingValue, ReadOnlySpan<byte> existingValue, global::RocksDbSharp.MergeOperators.OperandsEnumerator operands, out bool success) =>
+            FullMerge = (ReadOnlySpan<byte> _, bool hasExistingValue, ReadOnlySpan<byte> existingValue, global::RocksDbSharp.MergeOperators.OperandsEnumerator operands, out bool success) =>
             {
-                return FullMergeCallback(key, hasExistingValue, existingValue, operands, mergeOperator, valueSerializer, operandSerializer, out success);
+                return FullMergeCallback(hasExistingValue, existingValue, operands, mergeOperator, valueSerializer, operandSerializer, out success);
             },
-            PartialMerge = (ReadOnlySpan<byte> key, global::RocksDbSharp.MergeOperators.OperandsEnumerator operands, out bool success) =>
+            PartialMerge = (ReadOnlySpan<byte> _, global::RocksDbSharp.MergeOperators.OperandsEnumerator operands, out bool success) =>
             {
-                return PartialMergeCallback(key, operands, mergeOperator, operandSerializer, out success);
+                return PartialMergeCallback(operands, mergeOperator, operandSerializer, out success);
             }
         };
     }
 
-    private static byte[] FullMergeCallback<TValue, TOperand>(
-        ReadOnlySpan<byte> key,
-        bool hasExistingValue,
+    private static byte[] FullMergeCallback<TValue, TOperand>(bool hasExistingValue,
         ReadOnlySpan<byte> existingValue,
         global::RocksDbSharp.MergeOperators.OperandsEnumerator operands,
         IMergeOperator<TValue, TOperand> mergeOperator,
@@ -132,10 +130,8 @@ internal class RocksDbBuilder : IRocksDbBuilder
     {
         success = true;
         
-        // Deserialize existing value if present
-        TValue existing = hasExistingValue ? valueSerializer.Deserialize(existingValue) : default!;
+        var existing = hasExistingValue ? valueSerializer.Deserialize(existingValue) : default!;
 
-        // Deserialize all operands
         var operandList = new List<TOperand>(operands.Count);
         for (int i = 0; i < operands.Count; i++)
         {
@@ -145,29 +141,24 @@ internal class RocksDbBuilder : IRocksDbBuilder
         // Call the user's merge operator - returns TValue
         var result = mergeOperator.FullMerge(existing, operandList);
 
-        // Serialize the result as TValue
         return SerializeValue(result, valueSerializer);
     }
 
-    private static byte[] PartialMergeCallback<TValue, TOperand>(
-        ReadOnlySpan<byte> key,
-        global::RocksDbSharp.MergeOperators.OperandsEnumerator operands,
+    private static byte[] PartialMergeCallback<TValue, TOperand>(global::RocksDbSharp.MergeOperators.OperandsEnumerator operands,
         IMergeOperator<TValue, TOperand> mergeOperator,
         ISerializer<TOperand> operandSerializer,
         out bool success)
     {
-        // Deserialize all operands
         var operandList = new List<TOperand>(operands.Count);
         for (int i = 0; i < operands.Count; i++)
         {
             operandList.Add(operandSerializer.Deserialize(operands.Get(i)));
         }
 
-        // Call the user's partial merge operator - returns TOperand
         var result = mergeOperator.PartialMerge(operandList);
 
         success = true;
-        // Serialize the result as TOperand
+        
         return SerializeValue(result, operandSerializer);
     }
 

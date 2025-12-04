@@ -107,23 +107,4 @@ public abstract class RocksDbStore<TKey, TValue>
     /// </summary>
     /// <returns>An enumerable collection of all the keys in the store.</returns>
     public IEnumerable<TKey> GetAllKeys() => _rocksDbAccessor.GetAllKeys();
-
-    /// <summary>
-    /// Performs an atomic merge operation on the value associated with the specified key.
-    /// This operation uses RocksDB's merge operator to combine the operand with the existing value
-    /// without requiring a separate read operation, which is more efficient than Get+Put for
-    /// accumulative operations like counters, list appends, or set unions.
-    /// </summary>
-    /// <param name="key">The key to merge the operand with.</param>
-    /// <param name="operand">The operand to merge with the existing value.</param>
-    /// <remarks>
-    /// This method requires a merge operator to be configured for the store's column family.
-    /// If no merge operator is configured, RocksDB will throw an error when reading the value.
-    /// 
-    /// Common use cases include:
-    /// - Counters: Merge operand represents the increment value
-    /// - Lists: Merge operand represents items to append
-    /// - Sets: Merge operand represents items to add to the set
-    /// </remarks>
-    protected void Merge(TKey key, TValue operand) => _rocksDbAccessor.Merge(key, operand);
 }

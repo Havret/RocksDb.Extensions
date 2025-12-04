@@ -42,7 +42,7 @@ namespace RocksDb.Extensions;
 /// }
 /// </code>
 /// </example>
-public abstract class MergeableRocksDbStore<TKey, TValue, TOperand> : RocksDbStore<TKey, TValue>, IMergeableRocksDbStore<TKey, TValue, TOperand>
+public abstract class MergeableRocksDbStore<TKey, TValue, TOperand> : RocksDbStore<TKey, TValue>
 {
     private readonly IMergeAccessor<TKey, TOperand> _mergeAccessor;
 
