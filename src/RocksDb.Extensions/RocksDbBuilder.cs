@@ -157,8 +157,13 @@ internal class RocksDbBuilder : IRocksDbBuilder
 
         var result = mergeOperator.PartialMerge(operandList);
 
+        if (result == null)
+        {
+            success = false;
+            return Array.Empty<byte>();
+        }
+
         success = true;
-        
         return SerializeValue(result, operandSerializer);
     }
 

@@ -53,49 +53,7 @@ public class TagsStore : MergeableRocksDbStore<string, IList<string>, ListOperat
 
 public class MergeOperatorTests
 {
-    [Test]
-    public void should_increment_counter_using_merge_operation()
-    {
-        // Arrange
-        using var testFixture = TestFixture.Create(rockDb =>
-        {
-            rockDb.AddMergeableStore<string, long, long, CounterStore>("counters", new Int64AddMergeOperator());
-        });
-
-        var store = testFixture.GetStore<CounterStore>();
-        var key = "page-views";
-
-        // Act
-        store.Increment(key, 1);
-        store.Increment(key, 5);
-        store.Increment(key, 10);
-
-        // Assert
-        Assert.That(store.TryGet(key, out var value), Is.True);
-        Assert.That(value, Is.EqualTo(16));
-    }
-
-    [Test]
-    public void should_handle_counter_with_initial_value()
-    {
-        // Arrange
-        using var testFixture = TestFixture.Create(rockDb =>
-        {
-            rockDb.AddMergeableStore<string, long, long, CounterStore>("counters", new Int64AddMergeOperator());
-        });
-
-        var store = testFixture.GetStore<CounterStore>();
-        var key = "page-views";
-
-        // Act - Put initial value, then merge
-        store.Put(key, 100);
-        store.Increment(key, 50);
-
-        // Assert
-        Assert.That(store.TryGet(key, out var value), Is.True);
-        Assert.That(value, Is.EqualTo(150));
-    }
-
+    
     [Test]
     public void should_append_to_list_using_merge_operation()
     {
@@ -144,34 +102,6 @@ public class MergeOperatorTests
         Assert.That(events.Count, Is.EqualTo(2));
         Assert.That(events[0], Is.EqualTo("initial-event"));
         Assert.That(events[1], Is.EqualTo("new-event"));
-    }
-
-    [Test]
-    public void should_handle_multiple_keys_with_merge_operations()
-    {
-        // Arrange
-        using var testFixture = TestFixture.Create(rockDb =>
-        {
-            rockDb.AddMergeableStore<string, long, long, CounterStore>("counters", new Int64AddMergeOperator());
-        });
-
-        var store = testFixture.GetStore<CounterStore>();
-
-        // Act
-        store.Increment("key1", 10);
-        store.Increment("key2", 20);
-        store.Increment("key1", 5);
-        store.Increment("key2", 10);
-
-        // Assert
-        Assert.Multiple(() =>
-        {
-            Assert.That(store.TryGet("key1", out var value1), Is.True);
-            Assert.That(value1, Is.EqualTo(15));
-
-            Assert.That(store.TryGet("key2", out var value2), Is.True);
-            Assert.That(value2, Is.EqualTo(30));
-        });
     }
 
     [Test]

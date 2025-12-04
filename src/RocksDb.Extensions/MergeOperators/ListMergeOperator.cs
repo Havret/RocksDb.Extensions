@@ -42,7 +42,7 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
 
     /// <inheritdoc />
     public IList<T> FullMerge(
-        IList<T> existingValue,
+        IList<T>? existingValue,
         IReadOnlyList<ListOperation<T>> operands)
     {
         // Start with existing items or empty list
@@ -58,46 +58,37 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
     }
 
     /// <inheritdoc />
-    public ListOperation<T> PartialMerge(
-        IReadOnlyList<ListOperation<T>> operands)
+    public ListOperation<T>? PartialMerge(IReadOnlyList<ListOperation<T>> operands)
     {
-        // Combine all operations into a single compound operation
-        // We preserve all items in order - adds followed by removes
-        // This is a simplification; a more sophisticated implementation could optimize
+        // Check if any operands contain removes
+        bool hasRemoves = false;
         var allAdds = new List<T>();
-        var allRemoves = new List<T>();
         
         foreach (var operand in operands)
         {
-            switch (operand.Type)
+            if (operand.Type == OperationType.Remove)
             {
-                case OperationType.Add:
-                    foreach (var item in operand.Items)
-                    {
-                        allAdds.Add(item);
-                    }
-                    break;
-                case OperationType.Remove:
-                    foreach (var item in operand.Items)
-                    {
-                        allRemoves.Add(item);
-                    }
-                    break;
+                hasRemoves = true;
+                break;
+            }
+            
+            if (operand.Type == OperationType.Add)
+            {
+                foreach (var item in operand.Items)
+                {
+                    allAdds.Add(item);
+                }
             }
         }
 
-        // For partial merge, we can only safely combine if there are no removes
-        // (since removes depend on the order of operations and existing state)
-        // For now, just return the first operand's type with combined items
-        // A better approach would be to return a compound operation, but that complicates the type
-        if (allRemoves.Count == 0)
+        // If there are any removes, we can't safely combine without knowing the existing state
+        // Return null to signal that RocksDB should keep operands separate
+        if (hasRemoves)
         {
-            return ListOperation<T>.Add(allAdds);
+            return null;
         }
         
-        // If we have removes, we can't safely combine without knowing the state
-        // Return the combined adds (removes will be re-applied during full merge)
-        // This is a simplification - in practice, operands are kept separate if partial merge fails
+        // Only adds present - safe to combine
         return ListOperation<T>.Add(allAdds);
     }
 

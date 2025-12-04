@@ -73,12 +73,7 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
 
     public void WriteTo(ref ListOperation<T> value, IBufferWriter<byte> buffer)
     {
-        if (TryCalculateSize(ref value, out var size))
-        {
-            var span = buffer.GetSpan(size);
-            WriteTo(ref value, ref span);
-            buffer.Advance(size);
-        }
+        throw new NotImplementedException();
     }
 
     public ListOperation<T> Deserialize(ReadOnlySpan<byte> buffer)

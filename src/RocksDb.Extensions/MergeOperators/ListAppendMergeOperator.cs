@@ -28,7 +28,7 @@ public class ListAppendMergeOperator<T> : IMergeOperator<IList<T>, IList<T>>
     public string Name => $"ListAppendMergeOperator<{typeof(T).Name}>";
 
     /// <inheritdoc />
-    public IList<T> FullMerge(IList<T> existingValue, IReadOnlyList<IList<T>> operands)
+    public IList<T> FullMerge(IList<T>? existingValue, IReadOnlyList<IList<T>> operands)
     {
         var result = existingValue != null ? new List<T>(existingValue) : new List<T>();
         
