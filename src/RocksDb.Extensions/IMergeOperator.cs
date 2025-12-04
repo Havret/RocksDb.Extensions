@@ -27,19 +27,17 @@ public interface IMergeOperator<TValue, TOperand>
     /// Performs a full merge of the existing value with one or more operands.
     /// Called when a Get operation encounters merge operands and needs to produce the final value.
     /// </summary>
-    /// <param name="key">The key being merged.</param>
     /// <param name="existingValue">The existing value in the database. For value types, this will be default if no value exists.</param>
     /// <param name="operands">The list of merge operands to apply, in order.</param>
     /// <returns>The merged value to store.</returns>
-    TValue FullMerge(ReadOnlySpan<byte> key, TValue existingValue, IReadOnlyList<TOperand> operands);
+    TValue FullMerge(TValue existingValue, IReadOnlyList<TOperand> operands);
 
     /// <summary>
     /// Performs a partial merge of multiple operands without the existing value.
     /// Called during compaction to combine multiple merge operands into a single operand.
     /// This is an optimization that reduces the number of operands that need to be stored.
     /// </summary>
-    /// <param name="key">The key being merged.</param>
     /// <param name="operands">The list of merge operands to combine, in order.</param>
     /// <returns>The combined operand.</returns>
-    TOperand PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<TOperand> operands);
+    TOperand PartialMerge(IReadOnlyList<TOperand> operands);
 }

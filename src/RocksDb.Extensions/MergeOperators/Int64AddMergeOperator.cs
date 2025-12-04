@@ -24,7 +24,7 @@ public class Int64AddMergeOperator : IMergeOperator<long, long>
     public string Name => "Int64AddMergeOperator";
 
     /// <inheritdoc />
-    public long FullMerge(ReadOnlySpan<byte> key, long existingValue, IReadOnlyList<long> operands)
+    public long FullMerge(long existingValue, IReadOnlyList<long> operands)
     {
         var result = existingValue;
         foreach (var operand in operands)
@@ -35,7 +35,7 @@ public class Int64AddMergeOperator : IMergeOperator<long, long>
     }
 
     /// <inheritdoc />
-    public long PartialMerge(ReadOnlySpan<byte> key, IReadOnlyList<long> operands)
+    public long PartialMerge(IReadOnlyList<long> operands)
     {
         long result = 0;
         foreach (var operand in operands)

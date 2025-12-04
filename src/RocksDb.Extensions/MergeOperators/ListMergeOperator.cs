@@ -42,7 +42,6 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
 
     /// <inheritdoc />
     public IList<T> FullMerge(
-        ReadOnlySpan<byte> key,
         IList<T> existingValue,
         IReadOnlyList<ListOperation<T>> operands)
     {
@@ -60,7 +59,6 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
 
     /// <inheritdoc />
     public ListOperation<T> PartialMerge(
-        ReadOnlySpan<byte> key,
         IReadOnlyList<ListOperation<T>> operands)
     {
         // Combine all operations into a single compound operation

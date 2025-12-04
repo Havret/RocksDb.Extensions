@@ -143,7 +143,7 @@ internal class RocksDbBuilder : IRocksDbBuilder
         }
 
         // Call the user's merge operator - returns TValue
-        var result = mergeOperator.FullMerge(key, existing, operandList);
+        var result = mergeOperator.FullMerge(existing, operandList);
 
         // Serialize the result as TValue
         return SerializeValue(result, valueSerializer);
@@ -164,7 +164,7 @@ internal class RocksDbBuilder : IRocksDbBuilder
         }
 
         // Call the user's partial merge operator - returns TOperand
-        var result = mergeOperator.PartialMerge(key, operandList);
+        var result = mergeOperator.PartialMerge(operandList);
 
         success = true;
         // Serialize the result as TOperand
