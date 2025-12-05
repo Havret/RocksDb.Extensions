@@ -122,6 +122,7 @@ internal class RocksDbBuilder : IRocksDbBuilder
         ISerializer<TOperand> operandSerializer,
         out bool success)
     {
+        Console.WriteLine($"[FullMergeCallback] hasExistingValue={hasExistingValue}, operands.Count={operands.Count}");
         success = true;
         
         var existing = hasExistingValue ? valueSerializer.Deserialize(existingValue) : default!;
@@ -134,8 +135,15 @@ internal class RocksDbBuilder : IRocksDbBuilder
 
         // Call the user's merge operator - returns TValue
         var result = mergeOperator.FullMerge(existing, operandList);
+        Console.WriteLine($"[FullMergeCallback] result type={result?.GetType()?.Name ?? "null"}");
 
-        return SerializeValue(result, valueSerializer);
+        var serialized = SerializeValue(result, valueSerializer);
+        Console.WriteLine($"[FullMergeCallback] serialized.Length={serialized.Length}");
+        if (serialized.Length > 0 && serialized.Length < 100)
+        {
+            Console.WriteLine($"[FullMergeCallback] bytes={BitConverter.ToString(serialized)}");
+        }
+        return serialized;
     }
 
     private static byte[] PartialMergeCallback<TValue, TOperand>(global::RocksDbSharp.MergeOperators.OperandsEnumerator operands,
