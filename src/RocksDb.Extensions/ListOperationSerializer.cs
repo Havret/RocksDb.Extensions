@@ -93,24 +93,22 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
         for (int i = 0; i < value.Items.Count; i++)
         {
             var item = value.Items[i];
-            if (_itemSerializer.TryCalculateSize(ref item, out var itemSize))
-            {
-                // Write size prefix (4 bytes)
-                var sizeSpan = buffer.GetSpan(sizeof(int));
-                BitConverter.TryWriteBytes(sizeSpan, itemSize);
-                buffer.Advance(sizeof(int));
-
-                // Write item data
-                var itemSpan = buffer.GetSpan(itemSize);
-                var tmpSpan = itemSpan.Slice(0, itemSize);
-                _itemSerializer.WriteTo(ref item, ref tmpSpan);
-                buffer.Advance(itemSize);
-            }
-            else
+            if (!_itemSerializer.TryCalculateSize(ref item, out var itemSize))
             {
                 throw new InvalidOperationException($"Cannot calculate size for item at index {i}. " +
                     "All items must support size calculation for serialization.");
             }
+            
+            // Write size prefix (4 bytes)
+            var sizeSpan = buffer.GetSpan(sizeof(int));
+            BitConverter.TryWriteBytes(sizeSpan, itemSize);
+            buffer.Advance(sizeof(int));
+
+            // Write item data
+            var itemSpan = buffer.GetSpan(itemSize);
+            var tmpSpan = itemSpan.Slice(0, itemSize);
+            _itemSerializer.WriteTo(ref item, ref tmpSpan);
+            buffer.Advance(itemSize);
         }
     }
 
