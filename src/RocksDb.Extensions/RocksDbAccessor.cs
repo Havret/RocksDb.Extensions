@@ -10,8 +10,8 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
     private protected const int MaxStackSize = 256;
 
     protected readonly ISerializer<TKey> _keySerializer;
-    protected private readonly ISerializer<TValue> _valueSerializer;
-    protected private readonly RocksDbContext _rocksDbContext;
+    private protected readonly ISerializer<TValue> _valueSerializer;
+    private protected readonly RocksDbContext _rocksDbContext;
     private protected readonly ColumnFamily _columnFamily;
     private readonly bool _checkIfExists;
 
@@ -382,76 +382,6 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         _columnFamily.Handle = _rocksDbContext.Db.CreateColumnFamily(_rocksDbContext.ColumnFamilyOptions, _columnFamily.Name);
 
         Native.Instance.rocksdb_column_family_handle_destroy(prevColumnFamilyHandle.Handle);
-    }
-
-    public void Merge(TKey key, TValue operand)
-    {
-        byte[]? rentedKeyBuffer = null;
-        bool useSpanAsKey;
-        // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpanAsKey = _keySerializer.TryCalculateSize(ref key, out var keySize))
-            ? keySize < MaxStackSize
-                ? stackalloc byte[keySize]
-                : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
-            : Span<byte>.Empty;
-
-        ReadOnlySpan<byte> keySpan = keyBuffer;
-        ArrayPoolBufferWriter<byte>? keyBufferWriter = null;
-
-        var value = operand;
-        byte[]? rentedValueBuffer = null;
-        bool useSpanAsValue;
-        // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> valueBuffer = (useSpanAsValue = _valueSerializer.TryCalculateSize(ref value, out var valueSize))
-            ? valueSize < MaxStackSize
-                ? stackalloc byte[valueSize]
-                : (rentedValueBuffer = ArrayPool<byte>.Shared.Rent(valueSize)).AsSpan(0, valueSize)
-            : Span<byte>.Empty;
-
-
-        ReadOnlySpan<byte> valueSpan = valueBuffer;
-        ArrayPoolBufferWriter<byte>? valueBufferWriter = null;
-
-        try
-        {
-            if (useSpanAsKey)
-            {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
-            }
-            else
-            {
-                keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
-                keySpan = keyBufferWriter.WrittenSpan;
-            }
-
-            if (useSpanAsValue)
-            {
-                _valueSerializer.WriteTo(ref value, ref valueBuffer);
-            }
-            else
-            {
-                valueBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _valueSerializer.WriteTo(ref value, valueBufferWriter);
-                valueSpan = valueBufferWriter.WrittenSpan;
-            }
-
-            _rocksDbContext.Db.Merge(keySpan, valueSpan, _columnFamily.Handle);
-        }
-        finally
-        {
-            keyBufferWriter?.Dispose();
-            valueBufferWriter?.Dispose();
-            if (rentedKeyBuffer is not null)
-            {
-                ArrayPool<byte>.Shared.Return(rentedKeyBuffer);
-            }
-
-            if (rentedValueBuffer is not null)
-            {
-                ArrayPool<byte>.Shared.Return(rentedValueBuffer);
-            }
-        }
     }
 }
 

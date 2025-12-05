@@ -31,11 +31,14 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
         for (int i = 0; i < value.Items.Count; i++)
         {
             var item = value.Items[i];
-            if (_itemSerializer.TryCalculateSize(ref item, out var itemSize))
+            if (!_itemSerializer.TryCalculateSize(ref item, out var itemSize))
             {
-                size += sizeof(int); // size prefix for each item
-                size += itemSize;
+                // If any item can't have its size calculated, we can't calculate the total size
+                size = 0;
+                return false;
             }
+            size += sizeof(int); // size prefix for each item
+            size += itemSize;
         }
 
         return true;
@@ -58,22 +61,57 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
         for (int i = 0; i < value.Items.Count; i++)
         {
             var item = value.Items[i];
-            if (_itemSerializer.TryCalculateSize(ref item, out var itemSize))
+            if (!_itemSerializer.TryCalculateSize(ref item, out var itemSize))
             {
-                slice = span.Slice(offset, sizeof(int));
-                BitConverter.TryWriteBytes(slice, itemSize);
-                offset += sizeof(int);
-
-                slice = span.Slice(offset, itemSize);
-                _itemSerializer.WriteTo(ref item, ref slice);
-                offset += itemSize;
+                throw new InvalidOperationException($"Cannot calculate size for item at index {i}. " +
+                    "All items must support size calculation when using span-based serialization.");
             }
+            
+            slice = span.Slice(offset, sizeof(int));
+            BitConverter.TryWriteBytes(slice, itemSize);
+            offset += sizeof(int);
+
+            slice = span.Slice(offset, itemSize);
+            _itemSerializer.WriteTo(ref item, ref slice);
+            offset += itemSize;
         }
     }
 
     public void WriteTo(ref ListOperation<T> value, IBufferWriter<byte> buffer)
     {
-        throw new NotImplementedException();
+        // Write operation type (1 byte)
+        var opSpan = buffer.GetSpan(sizeof(byte));
+        opSpan[0] = (byte)value.Type;
+        buffer.Advance(sizeof(byte));
+
+        // Write count (4 bytes)
+        var countSpan = buffer.GetSpan(sizeof(int));
+        BitConverter.TryWriteBytes(countSpan, value.Items.Count);
+        buffer.Advance(sizeof(int));
+
+        // Write each item with size prefix and data
+        for (int i = 0; i < value.Items.Count; i++)
+        {
+            var item = value.Items[i];
+            if (_itemSerializer.TryCalculateSize(ref item, out var itemSize))
+            {
+                // Write size prefix (4 bytes)
+                var sizeSpan = buffer.GetSpan(sizeof(int));
+                BitConverter.TryWriteBytes(sizeSpan, itemSize);
+                buffer.Advance(sizeof(int));
+
+                // Write item data
+                var itemSpan = buffer.GetSpan(itemSize);
+                var tmpSpan = itemSpan.Slice(0, itemSize);
+                _itemSerializer.WriteTo(ref item, ref tmpSpan);
+                buffer.Advance(itemSize);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Cannot calculate size for item at index {i}. " +
+                    "All items must support size calculation for serialization.");
+            }
+        }
     }
 
     public ListOperation<T> Deserialize(ReadOnlySpan<byte> buffer)

@@ -27,8 +27,8 @@ namespace RocksDb.Extensions;
 /// // Counter store where value and operand are the same type
 /// public class CounterStore : MergeableRocksDbStore&lt;string, long, long&gt;
 /// {
-///     public CounterStore(IRocksDbAccessor&lt;string, long&gt; accessor, IMergeAccessor&lt;string, long&gt; mergeAccessor) 
-///         : base(accessor, mergeAccessor) { }
+///     public CounterStore(IMergeAccessor&lt;string, long, long&gt; mergeAccessor) 
+///         : base(mergeAccessor) { }
 ///     
 ///     public void Increment(string key, long delta = 1) => Merge(key, delta);
 /// }
@@ -36,8 +36,8 @@ namespace RocksDb.Extensions;
 /// // Tags store where value is IList&lt;string&gt; but operand is ListOperation&lt;string&gt;
 /// public class TagsStore : MergeableRocksDbStore&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;&gt;
 /// {
-///     public TagsStore(IRocksDbAccessor&lt;string, IList&lt;string&gt;&gt; accessor, IMergeAccessor&lt;string, ListOperation&lt;string&gt;&gt; mergeAccessor) 
-///         : base(accessor, mergeAccessor) { }
+///     public TagsStore(IMergeAccessor&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;&gt; mergeAccessor) 
+///         : base(mergeAccessor) { }
 ///     
 ///     public void AddTag(string key, string tag) => Merge(key, ListOperation&lt;string&gt;.Add(tag));
 ///     public void RemoveTag(string key, string tag) => Merge(key, ListOperation&lt;string&gt;.Remove(tag));
@@ -66,7 +66,7 @@ public abstract class MergeableRocksDbStore<TKey, TValue, TOperand>
     /// <param name="operand">The operand to merge with the existing value.</param>
     public void Merge(TKey key, TOperand operand) => _rocksDbAccessor.Merge(key, operand);
     
-        /// <summary>
+    /// <summary>
     /// Removes the specified key and its associated value from the store.
     /// </summary>
     /// <param name="key">The key to remove.</param>

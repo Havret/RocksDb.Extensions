@@ -75,17 +75,9 @@ internal class VariableSizeListSerializer<T> : ISerializer<IList<T>>
 
     public IList<T> Deserialize(ReadOnlySpan<byte> buffer)
     {
-        // DEBUG: Log buffer info
-        Console.WriteLine($"[VariableSizeListSerializer.Deserialize] buffer.Length={buffer.Length}");
-        if (buffer.Length > 0 && buffer.Length < 100)
-        {
-            Console.WriteLine($"[VariableSizeListSerializer.Deserialize] bytes={BitConverter.ToString(buffer.ToArray())}");
-        }
-        
         // Read the size of the list
         var slice = buffer.Slice(0, sizeof(int));
         var size = BitConverter.ToInt32(slice);
-        Console.WriteLine($"[VariableSizeListSerializer.Deserialize] list size={size}");
 
         var list = new List<T>(size);
         

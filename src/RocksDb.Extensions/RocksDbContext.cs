@@ -112,7 +112,6 @@ internal class RocksDbContext : IDisposable
                     mergeOperatorConfig.PartialMerge,
                     mergeOperatorConfig.FullMerge);
                 
-                
                 cfOptions.SetMergeOperator(mergeOp);
                 columnFamilies.Add(columnFamilyName, cfOptions);
             }
