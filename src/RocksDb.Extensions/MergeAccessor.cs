@@ -22,7 +22,7 @@ internal class MergeAccessor<TKey, TValue, TOperand> : RocksDbAccessor<TKey, TVa
         byte[]? rentedKeyBuffer = null;
         bool useSpanAsKey;
         // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpanAsKey = _keySerializer.TryCalculateSize(ref key, out var keySize))
+        Span<byte> keyBuffer = (useSpanAsKey = KeySerializer.TryCalculateSize(ref key, out var keySize))
             ? keySize < MaxStackSize
                 ? stackalloc byte[keySize]
                 : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
@@ -48,12 +48,12 @@ internal class MergeAccessor<TKey, TValue, TOperand> : RocksDbAccessor<TKey, TVa
         {
             if (useSpanAsKey)
             {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
+                KeySerializer.WriteTo(ref key, ref keyBuffer);
             }
             else
             {
                 keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                KeySerializer.WriteTo(ref key, keyBufferWriter);
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
@@ -68,7 +68,7 @@ internal class MergeAccessor<TKey, TValue, TOperand> : RocksDbAccessor<TKey, TVa
                 operandSpan = operandBufferWriter.WrittenSpan;
             }
 
-            _rocksDbContext.Db.Merge(keySpan, operandSpan, _columnFamily.Handle);
+            RocksDbContext.Db.Merge(keySpan, operandSpan, ColumnFamily.Handle);
         }
         finally
         {

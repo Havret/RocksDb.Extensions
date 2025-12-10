@@ -9,10 +9,10 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
 {
     private protected const int MaxStackSize = 256;
 
-    protected readonly ISerializer<TKey> _keySerializer;
-    protected private readonly ISerializer<TValue> _valueSerializer;
-    protected private readonly RocksDbContext _rocksDbContext;
-    private protected readonly ColumnFamily _columnFamily;
+    protected readonly ISerializer<TKey> KeySerializer;
+    private readonly ISerializer<TValue> _valueSerializer;
+    private protected readonly RocksDbContext RocksDbContext;
+    private protected readonly ColumnFamily ColumnFamily;
     private readonly bool _checkIfExists;
 
     public RocksDbAccessor(RocksDbContext rocksDbContext,
@@ -20,9 +20,9 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         ISerializer<TKey> keySerializer,
         ISerializer<TValue> valueSerializer)
     {
-        _rocksDbContext = rocksDbContext;
-        _columnFamily = columnFamily;
-        _keySerializer = keySerializer;
+        RocksDbContext = rocksDbContext;
+        ColumnFamily = columnFamily;
+        KeySerializer = keySerializer;
         _valueSerializer = valueSerializer;
 
         _checkIfExists = typeof(TValue).IsValueType;
@@ -34,7 +34,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         bool useSpan;
 
         // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpan = _keySerializer.TryCalculateSize(ref key, out var keySize))
+        Span<byte> keyBuffer = (useSpan = KeySerializer.TryCalculateSize(ref key, out var keySize))
             ? keySize < MaxStackSize
                 ? stackalloc byte[keySize]
                 : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
@@ -47,16 +47,16 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         {
             if (useSpan)
             {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
+                KeySerializer.WriteTo(ref key, ref keyBuffer);
             }
             else
             {
                 keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                KeySerializer.WriteTo(ref key, keyBufferWriter);
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
-            _rocksDbContext.Db.Remove(keySpan, _columnFamily.Handle);
+            RocksDbContext.Db.Remove(keySpan, ColumnFamily.Handle);
         }
         finally
         {
@@ -73,7 +73,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         byte[]? rentedKeyBuffer = null;
         bool useSpanAsKey;
         // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpanAsKey = _keySerializer.TryCalculateSize(ref key, out var keySize))
+        Span<byte> keyBuffer = (useSpanAsKey = KeySerializer.TryCalculateSize(ref key, out var keySize))
             ? keySize < MaxStackSize
                 ? stackalloc byte[keySize]
                 : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
@@ -99,12 +99,12 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         {
             if (useSpanAsKey)
             {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
+                KeySerializer.WriteTo(ref key, ref keyBuffer);
             }
             else
             {
                 keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                KeySerializer.WriteTo(ref key, keyBufferWriter);
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
@@ -119,7 +119,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 valueSpan = valueBufferWriter.WrittenSpan;
             }
 
-            _rocksDbContext.Db.Put(keySpan, valueSpan, _columnFamily.Handle);
+            RocksDbContext.Db.Put(keySpan, valueSpan, ColumnFamily.Handle);
         }
         finally
         {
@@ -143,7 +143,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         bool useSpan;
 
         // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpan = _keySerializer.TryCalculateSize(ref key, out var keySize))
+        Span<byte> keyBuffer = (useSpan = KeySerializer.TryCalculateSize(ref key, out var keySize))
             ? keySize < MaxStackSize
                 ? stackalloc byte[keySize]
                 : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
@@ -156,22 +156,22 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         {
             if (useSpan)
             {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
+                KeySerializer.WriteTo(ref key, ref keyBuffer);
             }
             else
             {
                 keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                KeySerializer.WriteTo(ref key, keyBufferWriter);
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
-            if (_checkIfExists && _rocksDbContext.Db.HasKey(keySpan, _columnFamily.Handle) == false)
+            if (_checkIfExists && RocksDbContext.Db.HasKey(keySpan, ColumnFamily.Handle) == false)
             {
                 value = default;
                 return false;
             }
 
-            value = _rocksDbContext.Db.Get(keySpan, this, _columnFamily.Handle);
+            value = RocksDbContext.Db.Get(keySpan, this, ColumnFamily.Handle);
             return value != null;
         }
         finally
@@ -202,7 +202,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(keys[i], values[i], batch);
         }
 
-        _rocksDbContext.Db.Write(batch);
+        RocksDbContext.Db.Write(batch);
     }
 
     public void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector)
@@ -215,7 +215,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(key, value, batch);
         }
 
-        _rocksDbContext.Db.Write(batch);
+        RocksDbContext.Db.Write(batch);
     }
 
     public void PutRange(IReadOnlyList<(TKey key, TValue value)> items)
@@ -227,7 +227,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(key, value, batch);
         }
 
-        _rocksDbContext.Db.Write(batch);
+        RocksDbContext.Db.Write(batch);
     }
 
     private void AddToBatch(TKey key, TValue value, WriteBatch batch)
@@ -235,7 +235,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         byte[]? rentedKeyBuffer = null;
         bool useSpanAsKey;
         // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpanAsKey = _keySerializer.TryCalculateSize(ref key, out var keySize))
+        Span<byte> keyBuffer = (useSpanAsKey = KeySerializer.TryCalculateSize(ref key, out var keySize))
             ? keySize < MaxStackSize
                 ? stackalloc byte[keySize]
                 : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
@@ -261,12 +261,12 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         {
             if (useSpanAsKey)
             {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
+                KeySerializer.WriteTo(ref key, ref keyBuffer);
             }
             else
             {
                 keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                KeySerializer.WriteTo(ref key, keyBufferWriter);
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
@@ -281,7 +281,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 valueSpan = valueBufferWriter.WrittenSpan;
             }
 
-            _ = batch.Put(keySpan, valueSpan, _columnFamily.Handle);
+            _ = batch.Put(keySpan, valueSpan, ColumnFamily.Handle);
         }
         finally
         {
@@ -301,18 +301,18 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
 
     public IEnumerable<TKey> GetAllKeys()
     {
-        using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
+        using var iterator = RocksDbContext.Db.NewIterator(ColumnFamily.Handle);
         _ = iterator.SeekToFirst();
         while (iterator.Valid())
         {
-            yield return _keySerializer.Deserialize(iterator.Key());
+            yield return KeySerializer.Deserialize(iterator.Key());
             _ = iterator.Next();
         }
     }
 
     public IEnumerable<TValue> GetAllValues()
     {
-        using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
+        using var iterator = RocksDbContext.Db.NewIterator(ColumnFamily.Handle);
         _ = iterator.SeekToFirst();
         while (iterator.Valid())
         {
@@ -323,7 +323,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
 
     public int Count()
     {
-        using var iterator = _rocksDbContext.Db.NewIterator(_columnFamily.Handle);
+        using var iterator = RocksDbContext.Db.NewIterator(ColumnFamily.Handle);
         _ = iterator.SeekToFirst();
         var count = 0;
         while (iterator.Valid())
@@ -341,7 +341,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         bool useSpan;
 
         // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpan = _keySerializer.TryCalculateSize(ref key, out var keySize))
+        Span<byte> keyBuffer = (useSpan = KeySerializer.TryCalculateSize(ref key, out var keySize))
             ? keySize < MaxStackSize
                 ? stackalloc byte[keySize]
                 : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
@@ -354,16 +354,16 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         {
             if (useSpan)
             {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
+                KeySerializer.WriteTo(ref key, ref keyBuffer);
             }
             else
             {
                 keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                KeySerializer.WriteTo(ref key, keyBufferWriter);
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
-            return _rocksDbContext.Db.HasKey(keySpan, _columnFamily.Handle);
+            return RocksDbContext.Db.HasKey(keySpan, ColumnFamily.Handle);
         }
         finally
         {
@@ -377,9 +377,9 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
 
     public void Clear()
     {
-        var prevColumnFamilyHandle = _columnFamily.Handle;
-        _rocksDbContext.Db.DropColumnFamily(_columnFamily.Name);
-        _columnFamily.Handle = _rocksDbContext.Db.CreateColumnFamily(_rocksDbContext.ColumnFamilyOptions, _columnFamily.Name);
+        var prevColumnFamilyHandle = ColumnFamily.Handle;
+        RocksDbContext.Db.DropColumnFamily(ColumnFamily.Name);
+        ColumnFamily.Handle = RocksDbContext.Db.CreateColumnFamily(RocksDbContext.ColumnFamilyOptions, ColumnFamily.Name);
 
         Native.Instance.rocksdb_column_family_handle_destroy(prevColumnFamilyHandle.Handle);
     }
@@ -389,7 +389,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         byte[]? rentedKeyBuffer = null;
         bool useSpanAsKey;
         // ReSharper disable once AssignmentInConditionalExpression
-        Span<byte> keyBuffer = (useSpanAsKey = _keySerializer.TryCalculateSize(ref key, out var keySize))
+        Span<byte> keyBuffer = (useSpanAsKey = KeySerializer.TryCalculateSize(ref key, out var keySize))
             ? keySize < MaxStackSize
                 ? stackalloc byte[keySize]
                 : (rentedKeyBuffer = ArrayPool<byte>.Shared.Rent(keySize)).AsSpan(0, keySize)
@@ -416,12 +416,12 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
         {
             if (useSpanAsKey)
             {
-                _keySerializer.WriteTo(ref key, ref keyBuffer);
+                KeySerializer.WriteTo(ref key, ref keyBuffer);
             }
             else
             {
                 keyBufferWriter = new ArrayPoolBufferWriter<byte>();
-                _keySerializer.WriteTo(ref key, keyBufferWriter);
+                KeySerializer.WriteTo(ref key, keyBufferWriter);
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
@@ -436,7 +436,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 valueSpan = valueBufferWriter.WrittenSpan;
             }
 
-            _rocksDbContext.Db.Merge(keySpan, valueSpan, _columnFamily.Handle);
+            RocksDbContext.Db.Merge(keySpan, valueSpan, ColumnFamily.Handle);
         }
         finally
         {
