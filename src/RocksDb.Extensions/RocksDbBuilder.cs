@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using CommunityToolkit.HighPerformance.Buffers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -125,17 +126,24 @@ internal class RocksDbBuilder : IRocksDbBuilder
         success = true;
         
         var existing = hasExistingValue ? valueSerializer.Deserialize(existingValue) : default!;
-
-        var operandList = new List<TOperand>(operands.Count);
-        for (int i = 0; i < operands.Count; i++)
+        
+        var operandArray = ArrayPool<TOperand>.Shared.Rent(operands.Count);
+        try
         {
-            operandList.Add(operandSerializer.Deserialize(operands.Get(i)));
+            for (int i = 0; i < operands.Count; i++)
+            {
+                operandArray[i] = operandSerializer.Deserialize(operands.Get(i));
+            }
+            
+            var operandSpan = operandArray.AsSpan(0, operands.Count);
+            var result = mergeOperator.FullMerge(existing, operandSpan);
+
+            return SerializeValue(result, valueSerializer);
         }
-
-        // Call the user's merge operator - returns TValue
-        var result = mergeOperator.FullMerge(existing, operandList);
-
-        return SerializeValue(result, valueSerializer);
+        finally
+        {
+            ArrayPool<TOperand>.Shared.Return(operandArray, clearArray: RuntimeHelpers.IsReferenceOrContainsReferences<TOperand>());
+        }
     }
 
     private static byte[] PartialMergeCallback<TValue, TOperand>(global::RocksDbSharp.MergeOperators.OperandsEnumerator operands,
@@ -143,22 +151,32 @@ internal class RocksDbBuilder : IRocksDbBuilder
         ISerializer<TOperand> operandSerializer,
         out bool success)
     {
-        var operandList = new List<TOperand>(operands.Count);
-        for (int i = 0; i < operands.Count; i++)
+        // Rent array from pool instead of allocating List<TOperand>
+        var operandArray = ArrayPool<TOperand>.Shared.Rent(operands.Count);
+        try
         {
-            operandList.Add(operandSerializer.Deserialize(operands.Get(i)));
+            for (int i = 0; i < operands.Count; i++)
+            {
+                operandArray[i] = operandSerializer.Deserialize(operands.Get(i));
+            }
+
+            // Call the user's merge operator with ReadOnlySpan - zero allocation
+            var operandSpan = operandArray.AsSpan(0, operands.Count);
+            var result = mergeOperator.PartialMerge(operandSpan);
+
+            if (result == null)
+            {
+                success = false;
+                return Array.Empty<byte>();
+            }
+
+            success = true;
+            return SerializeValue(result, operandSerializer);
         }
-
-        var result = mergeOperator.PartialMerge(operandList);
-
-        if (result == null)
+        finally
         {
-            success = false;
-            return Array.Empty<byte>();
+            ArrayPool<TOperand>.Shared.Return(operandArray, clearArray: RuntimeHelpers.IsReferenceOrContainsReferences<TOperand>());
         }
-
-        success = true;
-        return SerializeValue(result, operandSerializer);
     }
 
     private static byte[] SerializeValue<T>(T value, ISerializer<T> serializer)

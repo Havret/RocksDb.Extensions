@@ -28,20 +28,20 @@ public interface IMergeOperator<TValue, TOperand>
     /// Called when a Get operation encounters merge operands and needs to produce the final value.
     /// </summary>
     /// <param name="existingValue">The existing value in the database. For value types, this will be default if no value exists.</param>
-    /// <param name="operands">The list of merge operands to apply, in order.</param>
+    /// <param name="operands">The span of merge operands to apply, in order.</param>
     /// <returns>The merged value to store.</returns>
-    TValue FullMerge(TValue? existingValue, IReadOnlyList<TOperand> operands);
+    TValue FullMerge(TValue? existingValue, ReadOnlySpan<TOperand> operands);
 
     /// <summary>
     /// Performs a partial merge of multiple operands without the existing value.
     /// Called during compaction to combine multiple merge operands into a single operand.
     /// This is an optimization that reduces the number of operands that need to be stored.
     /// </summary>
-    /// <param name="operands">The list of merge operands to combine, in order.</param>
+    /// <param name="operands">The span of merge operands to combine, in order.</param>
     /// <returns>The combined operand, or null if partial merge is not safe for these operands.</returns>
     /// <remarks>
     /// Return null when it's not safe to combine operands without knowing the existing value.
     /// When null is returned, RocksDB will keep the operands separate and call FullMerge later.
     /// </remarks>
-    TOperand? PartialMerge(IReadOnlyList<TOperand> operands);
+    TOperand? PartialMerge(ReadOnlySpan<TOperand> operands);
 }

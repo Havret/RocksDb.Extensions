@@ -43,7 +43,7 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
     /// <inheritdoc />
     public IList<T> FullMerge(
         IList<T>? existingValue,
-        IReadOnlyList<ListOperation<T>> operands)
+        ReadOnlySpan<ListOperation<T>> operands)
     {
         // Start with existing items or empty list
         var result = existingValue != null ? new List<T>(existingValue) : new List<T>();
@@ -58,7 +58,7 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
     }
 
     /// <inheritdoc />
-    public ListOperation<T>? PartialMerge(IReadOnlyList<ListOperation<T>> operands)
+    public ListOperation<T>? PartialMerge(ReadOnlySpan<ListOperation<T>> operands)
     {
         // Check if any operands contain removes
         bool hasRemoves = false;

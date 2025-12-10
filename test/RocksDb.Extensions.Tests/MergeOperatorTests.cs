@@ -4,22 +4,6 @@ using RocksDb.Extensions.Tests.Utils;
 
 namespace RocksDb.Extensions.Tests;
 
-/// <summary>
-/// Store that uses merge operations for testing list appends.
-/// </summary>
-public class EventLogStore : MergeableRocksDbStore<string, IList<string>, IList<string>>
-{
-    public EventLogStore(IMergeAccessor<string, IList<string>, IList<string>> mergeAccessor)
-        : base(mergeAccessor)
-    {
-    }
-
-    public void AppendEvent(string key, string eventData) => Merge(key, new List<string> { eventData });
-}
-
-/// <summary>
-/// Store that uses merge operations for testing list operations (add/remove).
-/// </summary>
 public class TagsStore : MergeableRocksDbStore<string, IList<string>, ListOperation<string>>
 {
     public TagsStore(IMergeAccessor<string, IList<string>, ListOperation<string>> mergeAccessor)
@@ -41,55 +25,28 @@ public class TagsStore : MergeableRocksDbStore<string, IList<string>, ListOperat
 public class MergeOperatorTests
 {
     [Test]
-    public void should_append_to_list_using_merge_operation()
+    public void should_add_to_existing_list_using_merge_operation()
     {
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, EventLogStore, IList<string>>("events",
-                new ListAppendMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
-        var store = testFixture.GetStore<EventLogStore>();
-        var key = "user-actions";
+        var store = testFixture.GetStore<TagsStore>();
+        var key = "article-1";
 
         // Act
-        store.AppendEvent(key, "login");
-        store.AppendEvent(key, "view-page");
-        store.AppendEvent(key, "logout");
+        store.Put(key, new List<string> { "csharp", "dotnet" });
+        store.AddTags(key, "rocksdb");
 
         // Assert
-        Assert.That(store.TryGet(key, out var events), Is.True);
-        Assert.That(events, Is.Not.Null);
-        Assert.That(events.Count, Is.EqualTo(3));
-        Assert.That(events[0], Is.EqualTo("login"));
-        Assert.That(events[1], Is.EqualTo("view-page"));
-        Assert.That(events[2], Is.EqualTo("logout"));
-    }
-
-    [Test]
-    public void should_append_to_existing_list_using_merge_operation()
-    {
-        // Arrange
-        using var testFixture = TestFixture.Create(rockDb =>
-        {
-            rockDb.AddMergeableStore<string, IList<string>, EventLogStore, IList<string>>("events",
-                new ListAppendMergeOperator<string>());
-        });
-
-        var store = testFixture.GetStore<EventLogStore>();
-        var key = "user-actions";
-
-        // Act - Put initial value, then merge
-        store.Put(key, new List<string> { "initial-event" });
-        store.AppendEvent(key, "new-event");
-
-        // Assert
-        Assert.That(store.TryGet(key, out var events), Is.True);
-        Assert.That(events, Is.Not.Null);
-        Assert.That(events.Count, Is.EqualTo(2));
-        Assert.That(events[0], Is.EqualTo("initial-event"));
-        Assert.That(events[1], Is.EqualTo("new-event"));
+        Assert.That(store.TryGet(key, out var tags), Is.True);
+        Assert.That(tags, Is.Not.Null);
+        Assert.That(tags!.Count, Is.EqualTo(3));
+        Assert.That(tags, Does.Contain("csharp"));
+        Assert.That(tags, Does.Contain("dotnet"));
+        Assert.That(tags, Does.Contain("rocksdb"));
     }
 
     [Test]
@@ -130,7 +87,7 @@ public class MergeOperatorTests
         var key = "article-1";
 
         // Act - Add items, then remove some
-        store.AddTags(key, "csharp", "dotnet", "java", "python");
+        store.Merge(key, ListOperation<string>.Add("csharp", "dotnet", "java", "python"));
         store.RemoveTags(key, "java", "python");
 
         // Assert
