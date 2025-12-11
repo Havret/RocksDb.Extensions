@@ -1,5 +1,3 @@
-using RocksDbSharp;
-
 namespace RocksDb.Extensions;
 
 /// <summary>

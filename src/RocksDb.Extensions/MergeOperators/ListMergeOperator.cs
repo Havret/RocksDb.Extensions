@@ -63,6 +63,16 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
         // Check if any operands contain removes
         bool hasRemoves = false;
         var allAdds = new List<T>();
+
+        foreach (var operand in operands)
+        {
+            if (operand.Type == OperationType.Remove)
+            {
+                // If there are any removes, we can't safely combine without knowing the existing state
+                // Return null to signal that RocksDB should keep operands separate
+                return null;
+            }
+        }
         
         foreach (var operand in operands)
         {

@@ -134,11 +134,16 @@ internal class RocksDbBuilder : IRocksDbBuilder
             {
                 operandArray[i] = operandSerializer.Deserialize(operands.Get(i));
             }
-            
+
             var operandSpan = operandArray.AsSpan(0, operands.Count);
             var result = mergeOperator.FullMerge(existing, operandSpan);
 
             return SerializeValue(result, valueSerializer);
+        }
+        catch
+        {
+            success = false;
+            return Array.Empty<byte>();
         }
         finally
         {
@@ -151,7 +156,6 @@ internal class RocksDbBuilder : IRocksDbBuilder
         ISerializer<TOperand> operandSerializer,
         out bool success)
     {
-        // Rent array from pool instead of allocating List<TOperand>
         var operandArray = ArrayPool<TOperand>.Shared.Rent(operands.Count);
         try
         {
@@ -160,7 +164,6 @@ internal class RocksDbBuilder : IRocksDbBuilder
                 operandArray[i] = operandSerializer.Deserialize(operands.Get(i));
             }
 
-            // Call the user's merge operator with ReadOnlySpan - zero allocation
             var operandSpan = operandArray.AsSpan(0, operands.Count);
             var result = mergeOperator.PartialMerge(operandSpan);
 
@@ -172,6 +175,11 @@ internal class RocksDbBuilder : IRocksDbBuilder
 
             success = true;
             return SerializeValue(result, operandSerializer);
+        }
+        catch
+        {
+            success = false;
+            return Array.Empty<byte>();
         }
         finally
         {
