@@ -19,9 +19,4 @@ internal class MergeOperatorConfig
     /// Gets the partial merge callback delegate.
     /// </summary>
     public global::RocksDbSharp.MergeOperators.PartialMergeFunc PartialMerge { get; set; } = null!;
-
-    /// <summary>
-    /// Gets the value serializer for deserializing and serializing values.
-    /// </summary>
-    public object ValueSerializer { get; set; } = null!;
 }

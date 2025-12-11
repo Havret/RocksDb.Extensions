@@ -103,7 +103,6 @@ internal class RocksDbBuilder : IRocksDbBuilder
         return new MergeOperatorConfig
         {
             Name = mergeOperator.Name,
-            ValueSerializer = valueSerializer,
             FullMerge = (ReadOnlySpan<byte> _, bool hasExistingValue, ReadOnlySpan<byte> existingValue, global::RocksDbSharp.MergeOperators.OperandsEnumerator operands, out bool success) =>
             {
                 return FullMergeCallback(hasExistingValue, existingValue, operands, mergeOperator, valueSerializer, operandSerializer, out success);
