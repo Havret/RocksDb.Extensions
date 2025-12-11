@@ -4,7 +4,7 @@ using RocksDb.Extensions.MergeOperators;
 namespace RocksDb.Extensions;
 
 /// <summary>
-/// Serializes ListOperation&lt;T&gt; which contains an operation type (Add/Remove) and a list of items.
+/// Serializes CollectionOperation&lt;T&gt; which contains an operation type (Add/Remove) and a list of items.
 /// </summary>
 /// <remarks>
 /// The serialized format consists of:
@@ -14,7 +14,7 @@ namespace RocksDb.Extensions;
 ///   - 4 bytes: Size of the serialized item
 ///   - N bytes: Serialized item data
 /// </remarks>
-internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
+internal class ListOperationSerializer<T> : ISerializer<CollectionOperation<T>>
 {
     private readonly ISerializer<T> _itemSerializer;
 
@@ -23,7 +23,7 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
         _itemSerializer = itemSerializer;
     }
 
-    public bool TryCalculateSize(ref ListOperation<T> value, out int size)
+    public bool TryCalculateSize(ref CollectionOperation<T> value, out int size)
     {
         // 1 byte for operation type + 4 bytes for count
         size = sizeof(byte) + sizeof(int);
@@ -41,7 +41,7 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
         return true;
     }
 
-    public void WriteTo(ref ListOperation<T> value, ref Span<byte> span)
+    public void WriteTo(ref CollectionOperation<T> value, ref Span<byte> span)
     {
         int offset = 0;
 
@@ -71,12 +71,12 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
         }
     }
 
-    public void WriteTo(ref ListOperation<T> value, IBufferWriter<byte> buffer)
+    public void WriteTo(ref CollectionOperation<T> value, IBufferWriter<byte> buffer)
     {
         throw new NotImplementedException();
     }
 
-    public ListOperation<T> Deserialize(ReadOnlySpan<byte> buffer)
+    public CollectionOperation<T> Deserialize(ReadOnlySpan<byte> buffer)
     {
         int offset = 0;
 
@@ -103,6 +103,6 @@ internal class ListOperationSerializer<T> : ISerializer<ListOperation<T>>
             offset += itemSize;
         }
 
-        return new ListOperation<T>(operationType, items);
+        return new CollectionOperation<T>(operationType, items);
     }
 }

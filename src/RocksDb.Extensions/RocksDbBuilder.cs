@@ -123,8 +123,8 @@ internal class RocksDbBuilder : IRocksDbBuilder
             return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
         }
 
-        // Handle ListOperation<T> for the ListMergeOperator
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(MergeOperators.ListOperation<>))
+        // Handle CollectionOperation<T> for the ListMergeOperator
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(MergeOperators.CollectionOperation<>))
         {
             var itemType = type.GetGenericArguments()[0];
             

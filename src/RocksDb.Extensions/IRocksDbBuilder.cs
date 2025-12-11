@@ -46,7 +46,7 @@ public interface IRocksDbBuilder
     /// <list type="bullet">
     /// <item><description>Counters: TValue=long, TOperand=long (same type)</description></item>
     /// <item><description>List append: TValue=IList&lt;T&gt;, TOperand=IList&lt;T&gt; (same type)</description></item>
-    /// <item><description>List with add/remove: TValue=IList&lt;T&gt;, TOperand=ListOperation&lt;T&gt; (different types)</description></item>
+    /// <item><description>List with add/remove: TValue=IList&lt;T&gt;, TOperand=CollectionOperation&lt;T&gt; (different types)</description></item>
     /// </list>
     /// </para>
     /// <para>

@@ -15,7 +15,7 @@ namespace RocksDb.Extensions;
 /// Merge operations are useful for:
 /// - Counters: Increment/decrement without reading current value (TValue=long, TOperand=long)
 /// - Lists: Append items without reading the entire list (TValue=IList&lt;T&gt;, TOperand=IList&lt;T&gt;)
-/// - Lists with add/remove: Modify lists atomically (TValue=IList&lt;T&gt;, TOperand=ListOperation&lt;T&gt;)
+/// - Lists with add/remove: Modify lists atomically (TValue=IList&lt;T&gt;, TOperand=CollectionOperation&lt;T&gt;)
 /// </para>
 /// <para>
 /// When using this base class, you must register the store with a merge operator using
@@ -33,14 +33,14 @@ namespace RocksDb.Extensions;
 ///     public void Increment(string key, long delta = 1) => Merge(key, delta);
 /// }
 /// 
-/// // Tags store where value is IList&lt;string&gt; but operand is ListOperation&lt;string&gt;
-/// public class TagsStore : MergeableRocksDbStore&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;&gt;
+/// // Tags store where value is IList&lt;string&gt; but operand is CollectionOperation&lt;string&gt;
+/// public class TagsStore : MergeableRocksDbStore&lt;string, IList&lt;string&gt;, CollectionOperation&lt;string&gt;&gt;
 /// {
-///     public TagsStore(IRocksDbAccessor&lt;string, IList&lt;string&gt;&gt; accessor, IMergeAccessor&lt;string, ListOperation&lt;string&gt;&gt; mergeAccessor) 
+///     public TagsStore(IRocksDbAccessor&lt;string, IList&lt;string&gt;&gt; accessor, IMergeAccessor&lt;string, CollectionOperation&lt;string&gt;&gt; mergeAccessor) 
 ///         : base(accessor, mergeAccessor) { }
 ///     
-///     public void AddTag(string key, string tag) => Merge(key, ListOperation&lt;string&gt;.Add(tag));
-///     public void RemoveTag(string key, string tag) => Merge(key, ListOperation&lt;string&gt;.Remove(tag));
+///     public void AddTag(string key, string tag) => Merge(key, CollectionOperation&lt;string&gt;.Add(tag));
+///     public void RemoveTag(string key, string tag) => Merge(key, CollectionOperation&lt;string&gt;.Remove(tag));
 /// }
 /// </code>
 /// </example>

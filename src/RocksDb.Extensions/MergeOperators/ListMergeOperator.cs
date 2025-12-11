@@ -2,36 +2,36 @@ namespace RocksDb.Extensions.MergeOperators;
 
 /// <summary>
 /// A merge operator that supports both adding and removing items from a list.
-/// Each merge operand is a ListOperation that specifies whether to add or remove items.
+/// Each merge operand is a CollectionOperation that specifies whether to add or remove items.
 /// Operations are applied in order, enabling atomic list modifications without read-before-write.
 /// </summary>
 /// <typeparam name="T">The type of elements in the list.</typeparam>
 /// <example>
 /// <code>
-/// public class TagsStore : MergeableRocksDbStore&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;&gt;
+/// public class TagsStore : MergeableRocksDbStore&lt;string, IList&lt;string&gt;, CollectionOperation&lt;string&gt;&gt;
 /// {
-///     public TagsStore(IMergeAccessor&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;&gt; mergeAccessor) 
+///     public TagsStore(IMergeAccessor&lt;string, IList&lt;string&gt;, CollectionOperation&lt;string&gt;&gt; mergeAccessor) 
 ///         : base(mergeAccessor) { }
 ///     
-///     public void AddTags(string key, params string[] tags) => Merge(key, ListOperation&lt;string&gt;.Add(tags));
-///     public void RemoveTags(string key, params string[] tags) => Merge(key, ListOperation&lt;string&gt;.Remove(tags));
+///     public void AddTags(string key, params string[] tags) => Merge(key, CollectionOperation&lt;string&gt;.Add(tags));
+///     public void RemoveTags(string key, params string[] tags) => Merge(key, CollectionOperation&lt;string&gt;.Remove(tags));
 /// }
 /// 
 /// // Registration:
-/// builder.AddMergeableStore&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;, TagsStore&gt;("tags", new ListMergeOperator&lt;string&gt;());
+/// builder.AddMergeableStore&lt;string, IList&lt;string&gt;, CollectionOperation&lt;string&gt;, TagsStore&gt;("tags", new ListMergeOperator&lt;string&gt;());
 /// </code>
 /// </example>
 /// <remarks>
 /// <para>
 /// The value type stored in RocksDB is <c>IList&lt;T&gt;</c> (the actual list contents),
-/// while merge operands are <c>ListOperation&lt;T&gt;</c> (the operations to apply).
+/// while merge operands are <c>CollectionOperation&lt;T&gt;</c> (the operations to apply).
 /// </para>
 /// <para>
 /// Remove operations delete the first occurrence of each item (same as <see cref="List{T}.Remove"/>).
 /// If an item to remove doesn't exist in the list, the operation is silently ignored.
 /// </para>
 /// </remarks>
-public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
+public class ListMergeOperator<T> : IMergeOperator<IList<T>, CollectionOperation<T>>
 {
     /// <inheritdoc />
     public string Name => $"ListMergeOperator<{typeof(T).Name}>";
@@ -39,7 +39,7 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
     /// <inheritdoc />
     public IList<T> FullMerge(
         IList<T>? existingValue,
-        ReadOnlySpan<ListOperation<T>> operands)
+        ReadOnlySpan<CollectionOperation<T>> operands)
     {
         // Start with existing items or empty list
         var result = existingValue != null ? new List<T>(existingValue) : new List<T>();
@@ -54,7 +54,7 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
     }
 
     /// <inheritdoc />
-    public ListOperation<T>? PartialMerge(ReadOnlySpan<ListOperation<T>> operands)
+    public CollectionOperation<T>? PartialMerge(ReadOnlySpan<CollectionOperation<T>> operands)
     {
         var allAdds = new List<T>();
 
@@ -77,10 +77,10 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
         }
         
         // Only adds present - safe to combine
-        return ListOperation<T>.Add(allAdds);
+        return CollectionOperation<T>.Add(allAdds);
     }
 
-    private static void ApplyOperation(List<T> result, ListOperation<T> operation)
+    private static void ApplyOperation(List<T> result, CollectionOperation<T> operation)
     {
         switch (operation.Type)
         {

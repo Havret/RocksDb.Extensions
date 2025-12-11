@@ -4,21 +4,21 @@ using RocksDb.Extensions.Tests.Utils;
 
 namespace RocksDb.Extensions.Tests;
 
-public class TagsStore : MergeableRocksDbStore<string, IList<string>, ListOperation<string>>
+public class TagsStore : MergeableRocksDbStore<string, IList<string>, CollectionOperation<string>>
 {
-    public TagsStore(IMergeAccessor<string, IList<string>, ListOperation<string>> mergeAccessor)
+    public TagsStore(IMergeAccessor<string, IList<string>, CollectionOperation<string>> mergeAccessor)
         : base(mergeAccessor)
     {
     }
 
     public void AddTags(string key, params string[] tags)
     {
-        Merge(key, ListOperation<string>.Add(tags));
+        Merge(key, CollectionOperation<string>.Add(tags));
     }
 
     public void RemoveTags(string key, params string[] tags)
     {
-        Merge(key, ListOperation<string>.Remove(tags));
+        Merge(key, CollectionOperation<string>.Remove(tags));
     }
 }
 
@@ -30,7 +30,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, CollectionOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -55,7 +55,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, CollectionOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -80,14 +80,14 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, CollectionOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
         var key = "article-1";
 
         // Act - Add items, then remove some
-        store.Merge(key, ListOperation<string>.Add("csharp", "dotnet", "java", "python"));
+        store.Merge(key, CollectionOperation<string>.Add("csharp", "dotnet", "java", "python"));
         store.RemoveTags(key, "java", "python");
 
         // Assert
@@ -106,7 +106,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, CollectionOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -132,7 +132,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, CollectionOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();
@@ -155,7 +155,7 @@ public class MergeOperatorTests
         // Arrange
         using var testFixture = TestFixture.Create(rockDb =>
         {
-            rockDb.AddMergeableStore<string, IList<string>, TagsStore, ListOperation<string>>("tags", new ListMergeOperator<string>());
+            rockDb.AddMergeableStore<string, IList<string>, TagsStore, CollectionOperation<string>>("tags", new ListMergeOperator<string>());
         });
 
         var store = testFixture.GetStore<TagsStore>();

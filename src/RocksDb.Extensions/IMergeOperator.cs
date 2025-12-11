@@ -12,7 +12,7 @@ namespace RocksDb.Extensions;
 /// <list type="bullet">
 /// <item><description>For counters: TValue=long, TOperand=long (same type)</description></item>
 /// <item><description>For list append: TValue=IList&lt;T&gt;, TOperand=IList&lt;T&gt; (same type)</description></item>
-/// <item><description>For list with add/remove: TValue=IList&lt;T&gt;, TOperand=ListOperation&lt;T&gt; (different types)</description></item>
+/// <item><description>For list with add/remove: TValue=IList&lt;T&gt;, TOperand=CollectionOperation&lt;T&gt; (different types)</description></item>
 /// </list>
 /// </remarks>
 public interface IMergeOperator<TValue, TOperand>
