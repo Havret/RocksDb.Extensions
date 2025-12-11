@@ -10,8 +10,8 @@ namespace RocksDb.Extensions.MergeOperators;
 /// <code>
 /// public class TagsStore : MergeableRocksDbStore&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;&gt;
 /// {
-///     public TagsStore(IRocksDbAccessor&lt;string, IList&lt;string&gt;&gt; accessor, IMergeAccessor&lt;string, ListOperation&lt;string&gt;&gt; mergeAccessor) 
-///         : base(accessor, mergeAccessor) { }
+///     public TagsStore(IMergeAccessor&lt;string, IList&lt;string&gt;, ListOperation&lt;string&gt;&gt; mergeAccessor) 
+///         : base(mergeAccessor) { }
 ///     
 ///     public void AddTags(string key, params string[] tags) => Merge(key, ListOperation&lt;string&gt;.Add(tags));
 ///     public void RemoveTags(string key, params string[] tags) => Merge(key, ListOperation&lt;string&gt;.Remove(tags));
@@ -29,10 +29,6 @@ namespace RocksDb.Extensions.MergeOperators;
 /// <para>
 /// Remove operations delete the first occurrence of each item (same as <see cref="List{T}.Remove"/>).
 /// If an item to remove doesn't exist in the list, the operation is silently ignored.
-/// </para>
-/// <para>
-/// For append-only use cases where removes are not needed, prefer <see cref="ListAppendMergeOperator{T}"/>
-/// which has less serialization overhead.
 /// </para>
 /// </remarks>
 public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
@@ -60,8 +56,6 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
     /// <inheritdoc />
     public ListOperation<T>? PartialMerge(ReadOnlySpan<ListOperation<T>> operands)
     {
-        // Check if any operands contain removes
-        bool hasRemoves = false;
         var allAdds = new List<T>();
 
         foreach (var operand in operands)
@@ -76,26 +70,10 @@ public class ListMergeOperator<T> : IMergeOperator<IList<T>, ListOperation<T>>
         
         foreach (var operand in operands)
         {
-            if (operand.Type == OperationType.Remove)
+            foreach (var item in operand.Items)
             {
-                hasRemoves = true;
-                break;
+                allAdds.Add(item);
             }
-            
-            if (operand.Type == OperationType.Add)
-            {
-                foreach (var item in operand.Items)
-                {
-                    allAdds.Add(item);
-                }
-            }
-        }
-
-        // If there are any removes, we can't safely combine without knowing the existing state
-        // Return null to signal that RocksDB should keep operands separate
-        if (hasRemoves)
-        {
-            return null;
         }
         
         // Only adds present - safe to combine
