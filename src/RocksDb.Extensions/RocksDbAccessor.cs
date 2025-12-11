@@ -56,7 +56,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 keySpan = keyBufferWriter.WrittenSpan;
             }
 
-            _rocksDbContext.Db.Remove(keySpan, _columnFamily.Handle);
+            _rocksDbContext.Db.Remove(keySpan, _columnFamily.Handle, _rocksDbContext.WriteOptions);
         }
         finally
         {
@@ -119,7 +119,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
                 valueSpan = valueBufferWriter.WrittenSpan;
             }
 
-            _rocksDbContext.Db.Put(keySpan, valueSpan, _columnFamily.Handle);
+            _rocksDbContext.Db.Put(keySpan, valueSpan, _columnFamily.Handle, _rocksDbContext.WriteOptions);
         }
         finally
         {
@@ -202,7 +202,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(keys[i], values[i], batch);
         }
 
-        _rocksDbContext.Db.Write(batch);
+        _rocksDbContext.Db.Write(batch, _rocksDbContext.WriteOptions);
     }
 
     public void PutRange(ReadOnlySpan<TValue> values, Func<TValue, TKey> keySelector)
@@ -215,7 +215,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(key, value, batch);
         }
 
-        _rocksDbContext.Db.Write(batch);
+        _rocksDbContext.Db.Write(batch, _rocksDbContext.WriteOptions);
     }
 
     public void PutRange(IReadOnlyList<(TKey key, TValue value)> items)
@@ -227,7 +227,7 @@ internal class RocksDbAccessor<TKey, TValue> : IRocksDbAccessor<TKey, TValue>, I
             AddToBatch(key, value, batch);
         }
 
-        _rocksDbContext.Db.Write(batch);
+        _rocksDbContext.Db.Write(batch, _rocksDbContext.WriteOptions);
     }
 
     private void AddToBatch(TKey key, TValue value, WriteBatch batch)

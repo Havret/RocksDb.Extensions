@@ -8,6 +8,8 @@ internal class RocksDbContext : IDisposable
     private readonly RocksDbSharp.RocksDb _rocksDb;
     private readonly Cache _cache;
     private readonly ColumnFamilyOptions _userSpecifiedOptions;
+    private readonly FlushOptions _flushOptions;
+    private readonly WriteOptions _writeOptions;
 
     private const long BlockCacheSize = 50 * 1024 * 1024L;
     private const long BlockSize = 4096L;
@@ -48,11 +50,11 @@ internal class RocksDbContext : IDisposable
         dbOptions.SetUseDirectReads(options.Value.UseDirectReads);
         dbOptions.SetUseDirectIoForFlushAndCompaction(options.Value.UseDirectIoForFlushAndCompaction);
 
-        var fOptions = new FlushOptions();
-        fOptions.SetWaitForFlush(options.Value.WaitForFlush);
+        _flushOptions = new FlushOptions();
+        _flushOptions.SetWaitForFlush(options.Value.WaitForFlush);
 
-        var writeOptions = new WriteOptions();
-        writeOptions.DisableWal(1);
+        _writeOptions = new WriteOptions();
+        _writeOptions.DisableWal(1);
 
         _userSpecifiedOptions.EnableStatistics();
 
@@ -75,6 +77,10 @@ internal class RocksDbContext : IDisposable
     public RocksDbSharp.RocksDb Db => _rocksDb;
 
     public ColumnFamilyOptions ColumnFamilyOptions => _userSpecifiedOptions;
+
+    public WriteOptions WriteOptions => _writeOptions;
+
+    public FlushOptions FlushOptions => _flushOptions;
 
     private static ColumnFamilies CreateColumnFamilies(IReadOnlyList<string> columnFamilyNames,
         ColumnFamilyOptions columnFamilyOptions)
