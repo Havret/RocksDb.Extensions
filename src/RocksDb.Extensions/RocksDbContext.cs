@@ -8,6 +8,7 @@ internal class RocksDbContext : IDisposable
     private readonly RocksDbSharp.RocksDb _rocksDb;
     private readonly Cache _cache;
     private readonly ColumnFamilyOptions _userSpecifiedOptions;
+    private readonly WriteOptions _writeOptions;
 
     private const long BlockCacheSize = 50 * 1024 * 1024L;
     private const long BlockSize = 4096L;
@@ -18,22 +19,9 @@ internal class RocksDbContext : IDisposable
     {
         var dbOptions = new DbOptions();
         _userSpecifiedOptions = new ColumnFamilyOptions();
-        var tableConfig = new BlockBasedTableOptions();
         _cache = Cache.CreateLru(BlockCacheSize);
-        tableConfig.SetBlockCache(_cache);
-        tableConfig.SetBlockSize(BlockSize);
-
-        var filter = BloomFilterPolicy.Create();
-        tableConfig.SetFilterPolicy(filter);
-        _userSpecifiedOptions.SetBlockBasedTableFactory(tableConfig);
-        _userSpecifiedOptions.SetWriteBufferSize(WriteBufferSize);
-        _userSpecifiedOptions.SetCompression(Compression.No);
-        _userSpecifiedOptions.SetCompactionStyle(Compaction.Universal);
-        _userSpecifiedOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
-        _userSpecifiedOptions.SetCreateIfMissing();
-        _userSpecifiedOptions.SetCreateMissingColumnFamilies();
-        _userSpecifiedOptions.SetErrorIfExists(false);
-        _userSpecifiedOptions.SetInfoLogLevel(InfoLogLevel.Error);
+        
+        ConfigureColumnFamilyOptions(_userSpecifiedOptions, _cache);
 
         // this is the recommended way to increase parallelism in RocksDb
         // note that the current implementation of setIncreaseParallelism affects the number
@@ -48,11 +36,9 @@ internal class RocksDbContext : IDisposable
         dbOptions.SetUseDirectReads(options.Value.UseDirectReads);
         dbOptions.SetUseDirectIoForFlushAndCompaction(options.Value.UseDirectIoForFlushAndCompaction);
 
-        var fOptions = new FlushOptions();
-        fOptions.SetWaitForFlush(options.Value.WaitForFlush);
 
-        var writeOptions = new WriteOptions();
-        writeOptions.DisableWal(1);
+        _writeOptions = new WriteOptions();
+        _writeOptions.DisableWal(1);
 
         _userSpecifiedOptions.EnableStatistics();
 
@@ -72,9 +58,33 @@ internal class RocksDbContext : IDisposable
         Native.Instance.rocksdb_destroy_db(dbOptions.Handle, path);
     }
 
+    private static void ConfigureColumnFamilyOptions(ColumnFamilyOptions cfOptions, Cache cache)
+    {
+        var tableConfig = new BlockBasedTableOptions();
+        tableConfig.SetBlockCache(cache);
+        tableConfig.SetBlockSize(BlockSize);
+        
+        var filter = BloomFilterPolicy.Create();
+        tableConfig.SetFilterPolicy(filter);
+        
+        cfOptions.SetBlockBasedTableFactory(tableConfig);
+        cfOptions.SetWriteBufferSize(WriteBufferSize);
+        cfOptions.SetCompression(Compression.No);
+        cfOptions.SetCompactionStyle(Compaction.Universal);
+        cfOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
+        cfOptions.SetCreateIfMissing();
+        cfOptions.SetCreateMissingColumnFamilies();
+        cfOptions.SetErrorIfExists(false);
+        cfOptions.SetInfoLogLevel(InfoLogLevel.Error);
+        cfOptions.EnableStatistics();
+    }
+
     public RocksDbSharp.RocksDb Db => _rocksDb;
 
     public ColumnFamilyOptions ColumnFamilyOptions => _userSpecifiedOptions;
+
+    public WriteOptions WriteOptions => _writeOptions;
+
 
     private ColumnFamilies CreateColumnFamilies(
         IReadOnlyList<string> columnFamilyNames,
@@ -88,23 +98,7 @@ internal class RocksDbContext : IDisposable
             {
                 // Create a copy of the default options for this column family
                 var cfOptions = new ColumnFamilyOptions();
-                
-                // Apply the same settings as the default options
-                var tableConfig = new BlockBasedTableOptions();
-                tableConfig.SetBlockCache(_cache);
-                tableConfig.SetBlockSize(BlockSize);
-                var filter = BloomFilterPolicy.Create();
-                tableConfig.SetFilterPolicy(filter);
-                cfOptions.SetBlockBasedTableFactory(tableConfig);
-                cfOptions.SetWriteBufferSize(WriteBufferSize);
-                cfOptions.SetCompression(Compression.No);
-                cfOptions.SetCompactionStyle(Compaction.Universal);
-                cfOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
-                cfOptions.SetCreateIfMissing();
-                cfOptions.SetCreateMissingColumnFamilies();
-                cfOptions.SetErrorIfExists(false);
-                cfOptions.SetInfoLogLevel(InfoLogLevel.Error);
-                cfOptions.EnableStatistics();
+                ConfigureColumnFamilyOptions(cfOptions, _cache);
 
                 // Create and set the merge operator
                 var mergeOp = global::RocksDbSharp.MergeOperators.Create(

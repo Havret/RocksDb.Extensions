@@ -68,7 +68,7 @@ internal class MergeAccessor<TKey, TValue, TOperand> : RocksDbAccessor<TKey, TVa
                 operandSpan = operandBufferWriter.WrittenSpan;
             }
 
-            RocksDbContext.Db.Merge(keySpan, operandSpan, ColumnFamily.Handle);
+            RocksDbContext.Db.Merge(keySpan, operandSpan, ColumnFamily.Handle, RocksDbContext.WriteOptions);
         }
         finally
         {
