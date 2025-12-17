@@ -1,6 +1,8 @@
 using NUnit.Framework;
 using RocksDb.Extensions.MergeOperators;
 using RocksDb.Extensions.Tests.Utils;
+using RocksDb.Extensions.Tests.Protos;
+using RocksDb.Extensions.Protobuf;
 
 namespace RocksDb.Extensions.Tests;
 
@@ -19,6 +21,24 @@ public class TagsStore : MergeableRocksDbStore<string, IList<string>, Collection
     public void RemoveTags(string key, params string[] tags)
     {
         Merge(key, CollectionOperation<string>.Remove(tags));
+    }
+}
+
+public class ScoresStore : MergeableRocksDbStore<string, IList<int>, CollectionOperation<int>>
+{
+    public ScoresStore(IMergeAccessor<string, IList<int>, CollectionOperation<int>> mergeAccessor)
+        : base(mergeAccessor)
+    {
+    }
+
+    public void AddScores(string key, params int[] scores)
+    {
+        Merge(key, CollectionOperation<int>.Add(scores));
+    }
+
+    public void RemoveScores(string key, params int[] scores)
+    {
+        Merge(key, CollectionOperation<int>.Remove(scores));
     }
 }
 
@@ -171,5 +191,60 @@ public class MergeOperatorTests
         Assert.That(tags!.Count, Is.EqualTo(2));
         Assert.That(tags[0], Is.EqualTo("tag"));
         Assert.That(tags[1], Is.EqualTo("tag"));
+    }
+    
+    [Test]
+    public void should_add_primitive_types_to_list_using_list_merge_operator()
+    {
+        // Arrange
+        using var testFixture = TestFixture.Create(rockDb =>
+        {
+            rockDb.AddMergeableStore<string, IList<int>, ScoresStore, CollectionOperation<int>>(
+                "scores", 
+                new ListMergeOperator<int>());
+        });
+
+        var store = testFixture.GetStore<ScoresStore>();
+        var key = "player-1";
+
+        // Act
+        store.AddScores(key, 100, 200);
+        store.AddScores(key, 300);
+
+        // Assert
+        Assert.That(store.TryGet(key, out var scores), Is.True);
+        Assert.That(scores, Is.Not.Null);
+        Assert.That(scores!.Count, Is.EqualTo(3));
+        Assert.That(scores, Does.Contain(100));
+        Assert.That(scores, Does.Contain(200));
+        Assert.That(scores, Does.Contain(300));
+    }
+
+    [Test]
+    public void should_add_and_remove_primitive_types_using_list_merge_operator()
+    {
+        // Arrange
+        using var testFixture = TestFixture.Create(rockDb =>
+        {
+            rockDb.AddMergeableStore<string, IList<int>, ScoresStore, CollectionOperation<int>>(
+                "scores", 
+                new ListMergeOperator<int>());
+        });
+
+        var store = testFixture.GetStore<ScoresStore>();
+        var key = "player-1";
+
+        // Act - Add items, then remove some
+        store.AddScores(key, 100, 200, 300, 400);
+        store.RemoveScores(key, 200, 400); // Remove middle values
+
+        // Assert
+        Assert.That(store.TryGet(key, out var scores), Is.True);
+        Assert.That(scores, Is.Not.Null);
+        Assert.That(scores!.Count, Is.EqualTo(2));
+        Assert.That(scores, Does.Contain(100));
+        Assert.That(scores, Does.Contain(300));
+        Assert.That(scores, Does.Not.Contain(200));
+        Assert.That(scores, Does.Not.Contain(400));
     }
 }

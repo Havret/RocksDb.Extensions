@@ -7,9 +7,24 @@ namespace RocksDb.Extensions;
 /// Serializes CollectionOperation&lt;T&gt; which contains an operation type (Add/Remove) and a list of items.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The serialized format consists of:
 /// - 1 byte: Operation type (0 = Add, 1 = Remove)
-/// - Remaining bytes: Serialized list using VariableSizeListSerializer format
+/// - Remaining bytes: Serialized list using FixedSizeListSerializer (for primitives) or VariableSizeListSerializer (for complex types)
+/// </para>
+/// <para>
+/// Space efficiency optimization:
+/// - For primitive types (int, long, bool, etc.), uses FixedSizeListSerializer which stores:
+///   - 4 bytes: list count
+///   - N * elementSize bytes: all elements (no per-element size prefix)
+///   Example: List&lt;int&gt; with 3 elements = 4 + (3 * 4) = 16 bytes
+/// </para>
+/// <para>
+/// - For non-primitive types (strings, objects, protobuf messages), uses VariableSizeListSerializer which stores:
+///   - 4 bytes: list count
+///   - For each element: 4 bytes size prefix + element data
+///   Example: List&lt;string&gt; with ["ab", "cde"] = 4 + (4+2) + (4+3) = 17 bytes
+/// </para>
 /// </remarks>
 internal class ListOperationSerializer<T> : ISerializer<CollectionOperation<T>>
 {
@@ -17,7 +32,11 @@ internal class ListOperationSerializer<T> : ISerializer<CollectionOperation<T>>
 
     public ListOperationSerializer(ISerializer<T> itemSerializer)
     {
-        _listSerializer = new VariableSizeListSerializer<T>(itemSerializer);
+        // Use FixedSizeListSerializer for primitive types to avoid storing size for each element
+        // Use VariableSizeListSerializer for non-primitive types where elements may vary in size
+        _listSerializer = typeof(T).IsPrimitive
+            ? new FixedSizeListSerializer<T>(itemSerializer)
+            : new VariableSizeListSerializer<T>(itemSerializer);
     }
 
     public bool TryCalculateSize(ref CollectionOperation<T> value, out int size)
