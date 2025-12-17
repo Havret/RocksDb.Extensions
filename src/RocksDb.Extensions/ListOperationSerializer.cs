@@ -9,66 +9,41 @@ namespace RocksDb.Extensions;
 /// <remarks>
 /// The serialized format consists of:
 /// - 1 byte: Operation type (0 = Add, 1 = Remove)
-/// - 4 bytes: Number of items
-/// - For each item:
-///   - 4 bytes: Size of the serialized item
-///   - N bytes: Serialized item data
+/// - Remaining bytes: Serialized list using VariableSizeListSerializer format
 /// </remarks>
 internal class ListOperationSerializer<T> : ISerializer<CollectionOperation<T>>
 {
-    private readonly ISerializer<T> _itemSerializer;
+    private readonly ISerializer<IList<T>> _listSerializer;
 
     public ListOperationSerializer(ISerializer<T> itemSerializer)
     {
-        _itemSerializer = itemSerializer;
+        _listSerializer = new VariableSizeListSerializer<T>(itemSerializer);
     }
 
     public bool TryCalculateSize(ref CollectionOperation<T> value, out int size)
     {
-        // 1 byte for operation type + 4 bytes for count
-        size = sizeof(byte) + sizeof(int);
-
-        for (int i = 0; i < value.Items.Count; i++)
+        // 1 byte for operation type + size of the list
+        size = sizeof(byte);
+        
+        var items = value.Items;
+        if (_listSerializer.TryCalculateSize(ref items, out var listSize))
         {
-            var item = value.Items[i];
-            if (_itemSerializer.TryCalculateSize(ref item, out var itemSize))
-            {
-                size += sizeof(int); // size prefix for each item
-                size += itemSize;
-            }
+            size += listSize;
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     public void WriteTo(ref CollectionOperation<T> value, ref Span<byte> span)
     {
-        int offset = 0;
-
         // Write operation type (1 byte)
-        span[offset] = (byte)value.Type;
-        offset += sizeof(byte);
+        span[0] = (byte)value.Type;
 
-        // Write count
-        var slice = span.Slice(offset, sizeof(int));
-        BitConverter.TryWriteBytes(slice, value.Items.Count);
-        offset += sizeof(int);
-
-        // Write each item with size prefix
-        for (int i = 0; i < value.Items.Count; i++)
-        {
-            var item = value.Items[i];
-            if (_itemSerializer.TryCalculateSize(ref item, out var itemSize))
-            {
-                slice = span.Slice(offset, sizeof(int));
-                BitConverter.TryWriteBytes(slice, itemSize);
-                offset += sizeof(int);
-
-                slice = span.Slice(offset, itemSize);
-                _itemSerializer.WriteTo(ref item, ref slice);
-                offset += itemSize;
-            }
-        }
+        // Write the list using the list serializer
+        var listSpan = span.Slice(sizeof(byte));
+        var items = value.Items;
+        _listSerializer.WriteTo(ref items, ref listSpan);
     }
 
     public void WriteTo(ref CollectionOperation<T> value, IBufferWriter<byte> buffer)
@@ -78,30 +53,12 @@ internal class ListOperationSerializer<T> : ISerializer<CollectionOperation<T>>
 
     public CollectionOperation<T> Deserialize(ReadOnlySpan<byte> buffer)
     {
-        int offset = 0;
-
         // Read operation type
-        var operationType = (OperationType)buffer[offset];
-        offset += sizeof(byte);
+        var operationType = (OperationType)buffer[0];
 
-        // Read count
-        var slice = buffer.Slice(offset, sizeof(int));
-        var count = BitConverter.ToInt32(slice);
-        offset += sizeof(int);
-
-        // Read items
-        var items = new List<T>(count);
-        for (int i = 0; i < count; i++)
-        {
-            slice = buffer.Slice(offset, sizeof(int));
-            var itemSize = BitConverter.ToInt32(slice);
-            offset += sizeof(int);
-
-            slice = buffer.Slice(offset, itemSize);
-            var item = _itemSerializer.Deserialize(slice);
-            items.Add(item);
-            offset += itemSize;
-        }
+        // Read the list using the list serializer
+        var listBuffer = buffer.Slice(sizeof(byte));
+        var items = _listSerializer.Deserialize(listBuffer);
 
         return new CollectionOperation<T>(operationType, items);
     }
