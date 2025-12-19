@@ -155,26 +155,26 @@ The library includes specialized support for collections when working with:
 1. Protocol Buffer message types
 2. Primitive types (int, long, string, etc.)
 
-When using `IList<T>` with these types, the library automatically handles serialization/deserialization without requiring wrapper message types. This is particularly useful for Protocol Buffers, where `RepeatedField<T>` typically cannot be serialized as a standalone entity.
+When using `IList<T>` or `ISet<T>` with these types, the library automatically handles serialization/deserialization without requiring wrapper message types. This is particularly useful for Protocol Buffers, where `RepeatedField<T>` typically cannot be serialized as a standalone entity.
 
 The serialization format varies depending on the element type:
 
 #### Fixed-Size Types (int, long, etc.)
 
 ```
-[4 bytes: List length][Contiguous array of serialized elements]
+[4 bytes: Collection length][Contiguous array of serialized elements]
 ```
 
 #### Variable-Size Types (string, protobuf messages)
 
 ```
-[4 bytes: List length][For each element: [4 bytes: Element size][N bytes: Element data]]
+[4 bytes: Collection length][For each element: [4 bytes: Element size][N bytes: Element data]]
 ```
 
 Example types that work automatically with this support:
 
-- Protocol Buffer message types: `IList<YourProtobufMessage>`
-- Primitive types: `IList<int>`, `IList<long>`, `IList<string>`, etc.
+- Protocol Buffer message types: `IList<YourProtobufMessage>`, `ISet<YourProtobufMessage>`
+- Primitive types: `IList<int>`, `IList<long>`, `IList<string>`, `ISet<int>`, `ISet<string>`, etc.
 
 ## Merge Operators
 

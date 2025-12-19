@@ -299,6 +299,213 @@ public class RocksDbStoreWithPrimitiveSerializerTests
         retrievedValue.ShouldBe(value);
     }
 
+    [Test]
+    public void should_put_and_retrieve_data_from_store_using_set_of_ints()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ISet<int>, ISet<long>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ISet<int>, ISet<long>>>();
+
+        // Act
+        var key = new HashSet<int> { 1, 2, 3 };
+        var value = new HashSet<long> { 4, 5, 6 };
+        store.Put(key, value);
+
+        // Assert
+        store.HasKey(key).ShouldBeTrue();
+        store.TryGet(key, out var cacheValue).ShouldBeTrue();
+        cacheValue.ShouldBeEquivalentTo(value);
+    }
+
+    [Test]
+    public void should_put_and_retrieve_data_from_store_using_set_of_strings()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ISet<string>, ISet<string>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ISet<string>, ISet<string>>>();
+        var key = new HashSet<string> { "key1", "key2", string.Empty, "key3" };
+        var value = new HashSet<string> { "value1", string.Empty, "value2", "value3" };
+
+        // Act
+        store.Put(key, value);
+
+        // Assert
+        store.HasKey(key).ShouldBeTrue();
+        store.TryGet(key, out var retrievedValue).ShouldBeTrue();
+        retrievedValue.ShouldBeEquivalentTo(value);
+    }
+
+    [Test]
+    public void should_put_and_retrieve_empty_set_with_int_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ISet<int>, ISet<int>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ISet<int>, ISet<int>>>();
+
+        // Act
+        var emptyIntSetKey = new HashSet<int>();
+        var emptyIntSetValue = new HashSet<int>();
+            
+        store.Put(emptyIntSetKey, emptyIntSetValue);
+
+        // Assert
+        store.HasKey(emptyIntSetKey).ShouldBeTrue();
+        store.TryGet(emptyIntSetKey, out var value).ShouldBeTrue();
+        value.ShouldNotBeNull();
+        value.Count.ShouldBe(0);
+        value.ShouldBeEquivalentTo(emptyIntSetValue);
+    }
+    
+    [Test]
+    public void should_put_and_retrieve_empty_set_with_string_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ISet<string>, ISet<string>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ISet<string>, ISet<string>>>();
+
+        // Act
+        var emptyStringSetKey = new HashSet<string>();
+        var emptyStringSetValue = new HashSet<string>();
+            
+        store.Put(emptyStringSetKey, emptyStringSetValue);
+
+        // Assert
+        store.HasKey(emptyStringSetKey).ShouldBeTrue();
+        store.TryGet(emptyStringSetKey, out var value).ShouldBeTrue();
+        value.ShouldNotBeNull();
+        value.Count.ShouldBe(0);
+        value.ShouldBeEquivalentTo(emptyStringSetValue);
+    }
+    
+    [Test]
+    public void should_put_and_retrieve_empty_set_with_long_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ISet<long>, ISet<long>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ISet<long>, ISet<long>>>();
+
+        // Act
+        var emptyLongSetKey = new HashSet<long>();
+        var emptyLongSetValue = new HashSet<long>();
+            
+        store.Put(emptyLongSetKey, emptyLongSetValue);
+
+        // Assert
+        store.HasKey(emptyLongSetKey).ShouldBeTrue();
+        store.TryGet(emptyLongSetKey, out var value).ShouldBeTrue();
+        value.ShouldNotBeNull();
+        value.Count.ShouldBe(0);
+        value.ShouldBeEquivalentTo(emptyLongSetValue);
+    }
+    
+    [Test]
+    public void should_put_and_retrieve_empty_list_with_int_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<IList<int>, IList<int>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<IList<int>, IList<int>>>();
+
+        // Act
+        var emptyIntListKey = new List<int>();
+        var emptyIntListValue = new List<int>();
+            
+        store.Put(emptyIntListKey, emptyIntListValue);
+
+        // Assert
+        store.HasKey(emptyIntListKey).ShouldBeTrue();
+        store.TryGet(emptyIntListKey, out var value).ShouldBeTrue();
+        value.ShouldNotBeNull();
+        value.Count.ShouldBe(0);
+        value.ShouldBeEquivalentTo(emptyIntListValue);
+    }
+    
+    [Test]
+    public void should_put_and_retrieve_empty_list_with_string_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<IList<string>, IList<string>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<IList<string>, IList<string>>>();
+
+        // Act
+        var emptyStringListKey = new List<string>();
+        var emptyStringListValue = new List<string>();
+            
+        store.Put(emptyStringListKey, emptyStringListValue);
+
+        // Assert
+        store.HasKey(emptyStringListKey).ShouldBeTrue();
+        store.TryGet(emptyStringListKey, out var value).ShouldBeTrue();
+        value.ShouldNotBeNull();
+        value.Count.ShouldBe(0);
+        value.ShouldBeEquivalentTo(emptyStringListValue);
+    }
+    
+    [Test]
+    public void should_handle_multiple_empty_sets_with_different_int_keys()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<int, ISet<string>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<int, ISet<string>>>();
+
+        // Act
+        var emptySet1 = new HashSet<string>();
+        var emptySet2 = new HashSet<string>();
+        var emptySet3 = new HashSet<string>();
+            
+        store.Put(1, emptySet1);
+        store.Put(2, emptySet2);
+        store.Put(3, emptySet3);
+
+        // Assert
+        store.HasKey(1).ShouldBeTrue();
+        store.TryGet(1, out var value1).ShouldBeTrue();
+        value1.ShouldNotBeNull();
+        value1.Count.ShouldBe(0);
+        
+        store.HasKey(2).ShouldBeTrue();
+        store.TryGet(2, out var value2).ShouldBeTrue();
+        value2.ShouldNotBeNull();
+        value2.Count.ShouldBe(0);
+        
+        store.HasKey(3).ShouldBeTrue();
+        store.TryGet(3, out var value3).ShouldBeTrue();
+        value3.ShouldNotBeNull();
+        value3.Count.ShouldBe(0);
+    }
+    
+    [Test]
+    public void should_handle_multiple_empty_sets_with_different_string_keys()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<string, ISet<int>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<string, ISet<int>>>();
+
+        // Act
+        var emptySet1 = new HashSet<int>();
+        var emptySet2 = new HashSet<int>();
+        var emptySet3 = new HashSet<int>();
+            
+        store.Put("key1", emptySet1);
+        store.Put("key2", emptySet2);
+        store.Put("key3", emptySet3);
+
+        // Assert
+        store.HasKey("key1").ShouldBeTrue();
+        store.TryGet("key1", out var value1).ShouldBeTrue();
+        value1.ShouldNotBeNull();
+        value1.Count.ShouldBe(0);
+        
+        store.HasKey("key2").ShouldBeTrue();
+        store.TryGet("key2", out var value2).ShouldBeTrue();
+        value2.ShouldNotBeNull();
+        value2.Count.ShouldBe(0);
+        
+        store.HasKey("key3").ShouldBeTrue();
+        store.TryGet("key3", out var value3).ShouldBeTrue();
+        value3.ShouldNotBeNull();
+        value3.Count.ShouldBe(0);
+    }
+
     private static TestFixture CreateTestFixture<TKey, TValue>()
     {
         var testFixture = TestFixture.Create(rockDb =>

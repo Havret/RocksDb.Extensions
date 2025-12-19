@@ -170,6 +170,115 @@ public class RocksDbStoreWithProtobufSerializerTests
         value.ShouldBeEquivalentTo(cacheValue);
     }
     
+    [Test]
+    public void should_put_and_retrieve_data_with_sets_from_store()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ISet<CacheKey>, ISet<CacheValue>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ISet<CacheKey>, ISet<CacheValue>>>();
+
+        // Act
+        var cacheKey = Enumerable.Range(0, 100)
+            .Select(x => new CacheKey 
+            { 
+                Id = x,
+            })
+            .ToHashSet();
+            
+        var cacheValue = Enumerable.Range(0, 100)
+            .Select(x => new CacheValue 
+            { 
+                Id = x, 
+                Value = $"value-{x}",
+            })
+            .ToHashSet();
+            
+        store.Put(cacheKey, cacheValue);
+
+        store.HasKey(cacheKey).ShouldBeTrue();
+        store.TryGet(cacheKey, out var value).ShouldBeTrue();
+        value.ShouldBeEquivalentTo(cacheValue);
+    }
+    
+    [Test]
+    public void should_put_and_retrieve_empty_set_with_non_primitive_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<ISet<CacheKey>, ISet<CacheValue>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<ISet<CacheKey>, ISet<CacheValue>>>();
+
+        // Act
+        var emptyCacheKey = new HashSet<CacheKey>();
+        var emptyCacheValue = new HashSet<CacheValue>();
+            
+        store.Put(emptyCacheKey, emptyCacheValue);
+
+        // Assert
+        store.HasKey(emptyCacheKey).ShouldBeTrue();
+        store.TryGet(emptyCacheKey, out var value).ShouldBeTrue();
+        value.ShouldNotBeNull();
+        value.Count.ShouldBe(0);
+        value.ShouldBeEquivalentTo(emptyCacheValue);
+    }
+    
+    [Test]
+    public void should_put_and_retrieve_empty_list_with_non_primitive_types()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<IList<CacheKey>, IList<CacheValue>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<IList<CacheKey>, IList<CacheValue>>>();
+
+        // Act
+        var emptyCacheKey = new List<CacheKey>();
+        var emptyCacheValue = new List<CacheValue>();
+            
+        store.Put(emptyCacheKey, emptyCacheValue);
+
+        // Assert
+        store.HasKey(emptyCacheKey).ShouldBeTrue();
+        store.TryGet(emptyCacheKey, out var value).ShouldBeTrue();
+        value.ShouldNotBeNull();
+        value.Count.ShouldBe(0);
+        value.ShouldBeEquivalentTo(emptyCacheValue);
+    }
+    
+    [Test]
+    public void should_handle_multiple_empty_sets_with_different_keys()
+    {
+        // Arrange
+        using var testFixture = CreateTestFixture<CacheKey, ISet<CacheValue>>();
+        var store = testFixture.GetStore<RocksDbGenericStore<CacheKey, ISet<CacheValue>>>();
+
+        // Act
+        var emptySet1 = new HashSet<CacheValue>();
+        var emptySet2 = new HashSet<CacheValue>();
+        var emptySet3 = new HashSet<CacheValue>();
+        
+        var key1 = new CacheKey { Id = 1 };
+        var key2 = new CacheKey { Id = 2 };
+        var key3 = new CacheKey { Id = 3 };
+            
+        store.Put(key1, emptySet1);
+        store.Put(key2, emptySet2);
+        store.Put(key3, emptySet3);
+
+        // Assert
+        store.HasKey(key1).ShouldBeTrue();
+        store.TryGet(key1, out var value1).ShouldBeTrue();
+        value1.ShouldNotBeNull();
+        value1.Count.ShouldBe(0);
+        
+        store.HasKey(key2).ShouldBeTrue();
+        store.TryGet(key2, out var value2).ShouldBeTrue();
+        value2.ShouldNotBeNull();
+        value2.Count.ShouldBe(0);
+        
+        store.HasKey(key3).ShouldBeTrue();
+        store.TryGet(key3, out var value3).ShouldBeTrue();
+        value3.ShouldNotBeNull();
+        value3.Count.ShouldBe(0);
+    }
+    
     private static TestFixture CreateTestFixture<TKey, TValue>()
     {
         var testFixture = TestFixture.Create(rockDb =>
