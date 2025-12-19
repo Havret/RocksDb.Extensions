@@ -124,6 +124,26 @@ internal class RocksDbBuilder : IRocksDbBuilder
             return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeListSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
         }
 
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ISet<>))
+        {
+            var elementType = type.GetGenericArguments()[0];
+            
+            // Use reflection to call CreateSerializer method with generic type argument
+            // This is equivalent to calling CreateSerializer<elementType>(serializerFactories)
+            var scalarSerializer = typeof(RocksDbBuilder).GetMethod(nameof(CreateSerializer), BindingFlags.NonPublic | BindingFlags.Static)
+                ?.MakeGenericMethod(elementType)
+                .Invoke(null, new object[] { serializerFactories });
+            
+            if (elementType.IsPrimitive)
+            {
+                // Use fixed size set serializer for primitive types
+                return (ISerializer<T>) Activator.CreateInstance(typeof(FixedSizeSetSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
+            }
+
+            // Use variable size set serializer for non-primitive types
+            return (ISerializer<T>) Activator.CreateInstance(typeof(VariableSizeSetSerializer<>).MakeGenericType(elementType), scalarSerializer)!;
+        }
+
         // Handle CollectionOperation<T> for the ListMergeOperator
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(MergeOperators.CollectionOperation<>))
         {
