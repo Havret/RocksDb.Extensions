@@ -8,6 +8,16 @@ internal class RocksDbContext : IDisposable
     private readonly WriteOptions _writeOptions;
     private readonly Dictionary<string, MergeOperatorConfig> _mergeOperators;
     private readonly Cache _cache;
+    
+    // ReSharper disable once CollectionNeverQueried.Local
+    /// <summary>
+    /// Stores ColumnFamilyOptions instances to prevent garbage collection of merge operator delegates.
+    /// This is critical because ColumnFamilyOptions holds MergeOperatorRef which contains the delegates
+    /// (FullMerge and PartialMerge) that RocksDB (native code) references. Without keeping the
+    /// ColumnFamilyOptions alive, the GC may collect MergeOperatorRef and its delegates, causing the error:
+    /// "A callback was made on a garbage collected delegate of type 'RocksDbSharp!RocksDbSharp.GetMergeOperator::Invoke'"
+    /// </summary>
+    private readonly Dictionary<string, ColumnFamilyOptions> _columnFamilyOptions = new();
 
     private const long BlockCacheSize = 50 * 1024 * 1024L;
     private const long BlockSize = 4096L;
@@ -38,21 +48,21 @@ internal class RocksDbContext : IDisposable
         dbOptions.SetWriteBufferSize(WriteBufferSize);
         dbOptions.SetCompression(Compression.No);
         dbOptions.SetCompactionStyle(Compaction.Universal);
-        
+
         var tableConfig = new BlockBasedTableOptions();
         tableConfig.SetBlockCache(_cache);
         tableConfig.SetBlockSize(BlockSize);
-        
+
         var filter = BloomFilterPolicy.Create();
         tableConfig.SetFilterPolicy(filter);
-        
+
         dbOptions.SetBlockBasedTableFactory(tableConfig);
-        
+
         _writeOptions = new WriteOptions();
         _writeOptions.DisableWal(1);
 
         _mergeOperators = options.Value.MergeOperators;
-        
+
         var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies);
 
         if (options.Value.DeleteExistingDatabaseOnStartup)
@@ -75,6 +85,10 @@ internal class RocksDbContext : IDisposable
 
     public ColumnFamilyOptions CreateColumnFamilyOptions(string columnFamilyName)
     {
+        // Remove old options if they exist (e.g., when recreating column family in Clear())
+        // We don't need to dispose them - just remove the reference and let GC handle it
+        _columnFamilyOptions.Remove(columnFamilyName);        
+        
         var cfOptions = new ColumnFamilyOptions();
         if (_mergeOperators.TryGetValue(columnFamilyName, out var mergeOperatorConfig))
         {
@@ -85,6 +99,9 @@ internal class RocksDbContext : IDisposable
 
             cfOptions.SetMergeOperator(mergeOp);
         }
+
+        // Store the options to keep MergeOperatorRef (and its delegates) alive
+        _columnFamilyOptions[columnFamilyName] = cfOptions;
 
         return cfOptions;
     }
@@ -104,6 +121,9 @@ internal class RocksDbContext : IDisposable
 
     public void Dispose()
     {
+        // Clear column family options to allow garbage collection
+        _columnFamilyOptions.Clear();        
+        
         Db.Dispose();
     }
 }
