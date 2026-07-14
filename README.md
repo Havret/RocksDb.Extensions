@@ -140,6 +140,45 @@ When this option is set to true, the existing database will be deleted on startu
 
 By default, the `DeleteExistingDatabaseOnStartup` option is set to false to preserve the current behavior of not automatically deleting the database. If you need to ensure a clean start for your application, set this option to true in your configuration.
 
+## Performance Tuning
+
+RocksDb.Extensions exposes a couple of block-based table settings that let you trade off memory usage against read performance:
+
+```csharp
+var rocksDbBuilder = builder.Services.AddRocksDb(options =>
+{
+    // Your RocksDb configuration... 
+    options.BlockSize = 4096;
+    options.CacheIndexAndFilterBlocks = true;
+    options.BlockCacheSize = 64 * 1024 * 1024;
+});
+```
+
+### `BlockCacheSize`
+
+All column families share a single LRU block cache, which holds uncompressed data blocks in memory (and, when `CacheIndexAndFilterBlocks` is enabled, index and filter blocks too) so that repeated reads don't have to hit disk. `BlockCacheSize` controls the size of this cache, in bytes.
+
+A larger cache increases the hit rate and improves read performance, at the cost of higher memory usage. A smaller cache reduces memory usage but leads to more disk reads and higher read latency.
+
+The default value is `67108864` (64 MiB).
+
+### `BlockSize`
+
+RocksDB stores key/value pairs in data blocks inside SST files, and each block is read from disk and decompressed as a single unit. `BlockSize` controls the target size, in bytes, of these blocks.
+
+- Smaller blocks reduce the amount of unrelated data that has to be read and decompressed to serve a single point lookup, which lowers read amplification and can improve lookup latency. The trade-off is a larger index (more blocks means more index entries) and higher per-block overhead, which increases memory usage.
+- Larger blocks improve compression ratios and shrink the index, but each read pulls in more data than is strictly needed, which can hurt point-lookup performance.
+
+The default value is `4096` (4 KiB), matching RocksDB's own default.
+
+### `CacheIndexAndFilterBlocks`
+
+By default, RocksDB keeps index and bloom filter blocks in memory outside of the configured block cache, in a region that isn't accounted for by the cache's size limit. This works fine for small databases, but as the dataset grows, the memory used by index and filter blocks grows right along with it, which can lead to unbounded memory usage that's hard to reason about.
+
+Setting `CacheIndexAndFilterBlocks` to `true` moves index and filter blocks into the same block cache used for data blocks, so all of RocksDB's block-based memory usage is tracked under a single, bounded cache budget. The cost is that index and filter blocks now compete with data blocks for cache space, which can lead to more cache evictions under memory pressure.
+
+The default value is `true`.
+
 ## Collections Support
 
 RocksDb.Extensions provides built-in support for collections across different serialization packages:
