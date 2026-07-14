@@ -8,6 +8,7 @@ internal class RocksDbContext : IDisposable
     private readonly WriteOptions _writeOptions;
     private readonly Dictionary<string, MergeOperatorConfig> _mergeOperators;
     private readonly Cache _cache;
+    private readonly BlockBasedTableOptions _tableConfig;
     
     // ReSharper disable once CollectionNeverQueried.Local
     /// <summary>
@@ -19,7 +20,7 @@ internal class RocksDbContext : IDisposable
     /// </summary>
     private readonly Dictionary<string, ColumnFamilyOptions> _columnFamilyOptions = new();
 
-    private const long BlockCacheSize = 50 * 1024 * 1024L;
+    private const long BlockCacheSize = 64 * 1024 * 1024L;
     private const long BlockSize = 4096L;
     private const long WriteBufferSize = 16 * 1024 * 1024L;
     private const int MaxWriteBuffers = 3;
@@ -44,19 +45,14 @@ internal class RocksDbContext : IDisposable
         dbOptions.SetUseDirectReads(options.Value.UseDirectReads);
         dbOptions.SetUseDirectIoForFlushAndCompaction(options.Value.UseDirectIoForFlushAndCompaction);
         dbOptions.EnableStatistics();
-        dbOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
-        dbOptions.SetWriteBufferSize(WriteBufferSize);
-        dbOptions.SetCompression(Compression.No);
-        dbOptions.SetCompactionStyle(Compaction.Universal);
 
-        var tableConfig = new BlockBasedTableOptions();
-        tableConfig.SetBlockCache(_cache);
-        tableConfig.SetBlockSize(BlockSize);
+        _tableConfig = new BlockBasedTableOptions();
+        _tableConfig.SetBlockCache(_cache);
+        _tableConfig.SetBlockSize(BlockSize);
+        _tableConfig.SetCacheIndexAndFilterBlocks(true);
 
         var filter = BloomFilterPolicy.Create();
-        tableConfig.SetFilterPolicy(filter);
-
-        dbOptions.SetBlockBasedTableFactory(tableConfig);
+        _tableConfig.SetFilterPolicy(filter);
 
         _writeOptions = new WriteOptions();
         _writeOptions.DisableWal(1);
@@ -90,6 +86,13 @@ internal class RocksDbContext : IDisposable
         _columnFamilyOptions.Remove(columnFamilyName);        
         
         var cfOptions = new ColumnFamilyOptions();
+        
+        cfOptions.SetBlockBasedTableFactory(_tableConfig);
+        cfOptions.SetMaxWriteBufferNumber(MaxWriteBuffers);
+        cfOptions.SetWriteBufferSize(WriteBufferSize);
+        cfOptions.SetCompression(Compression.No);
+        cfOptions.SetCompactionStyle(Compaction.Universal);
+        
         if (_mergeOperators.TryGetValue(columnFamilyName, out var mergeOperatorConfig))
         {
             var mergeOp = global::RocksDbSharp.MergeOperators.Create(
