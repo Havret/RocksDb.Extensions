@@ -79,4 +79,52 @@ public class RocksDbOptions
     /// </para>
     /// </remarks>
     public bool WaitForFlush { get; set; } = true;
+
+    /// <summary>
+    /// The size, in bytes, of the data blocks used by the block-based table format.
+    /// </summary>
+    /// <remarks>
+    /// RocksDB groups key/value pairs into blocks before writing them to SST files, and each block is
+    /// compressed and read from disk as a single unit. Smaller blocks reduce the amount of data that
+    /// must be read and decompressed to serve a single point lookup, which lowers read amplification
+    /// and can improve point-lookup latency, but they increase the size of the index (since there are
+    /// more blocks to index) and add per-block overhead, which increases memory usage and space
+    /// amplification. Larger blocks do the opposite: they improve compression ratios and reduce index
+    /// size, but each read pulls in more unrelated data.
+    /// <para>
+    /// The default value is <c>4096</c> (4 KiB).
+    /// </para>
+    /// </remarks>
+    public long BlockSize { get; set; } = 4096L;
+
+    /// <summary>
+    /// Determines whether index and filter blocks are placed in the same block cache as data blocks.
+    /// </summary>
+    /// <remarks>
+    /// By default, RocksDB keeps index and filter blocks outside of the block cache, in memory that is
+    /// not accounted for or bounded by the cache's configured capacity. This is fine for small databases,
+    /// but as the dataset grows, the memory used by index and filter blocks grows with it and can lead to
+    /// unbounded memory usage. Enabling this setting moves index and filter blocks into the block cache
+    /// so that all of RocksDB's block-based memory usage is tracked and limited by a single cache budget,
+    /// at the cost of index and filter blocks competing with data blocks for cache space.
+    /// <para>
+    /// The default value is <c>true</c>.
+    /// </para>
+    /// </remarks>
+    public bool CacheIndexAndFilterBlocks { get; set; } = true;
+
+    /// <summary>
+    /// The size, in bytes, of the LRU block cache shared by all column families.
+    /// </summary>
+    /// <remarks>
+    /// RocksDB uses the block cache to hold uncompressed data blocks (and, when
+    /// <see cref="CacheIndexAndFilterBlocks"/> is enabled, index and filter blocks too) in memory so that
+    /// repeated reads don't have to hit disk. A larger cache increases the hit rate and improves read
+    /// performance at the cost of higher memory usage; a smaller cache reduces memory usage but leads to
+    /// more disk reads and higher read latency.
+    /// <para>
+    /// The default value is <c>67108864</c> (64 MiB).
+    /// </para>
+    /// </remarks>
+    public ulong BlockCacheSize { get; set; } = 64 * 1024 * 1024L;
 }

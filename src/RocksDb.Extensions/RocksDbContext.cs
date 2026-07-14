@@ -20,15 +20,13 @@ internal class RocksDbContext : IDisposable
     /// </summary>
     private readonly Dictionary<string, ColumnFamilyOptions> _columnFamilyOptions = new();
 
-    private const long BlockCacheSize = 64 * 1024 * 1024L;
-    private const long BlockSize = 4096L;
     private const long WriteBufferSize = 16 * 1024 * 1024L;
     private const int MaxWriteBuffers = 3;
 
     public RocksDbContext(IOptions<RocksDbOptions> options)
     {
         var dbOptions = new DbOptions();
-        _cache = Cache.CreateLru(BlockCacheSize);
+        _cache = Cache.CreateLru(options.Value.BlockCacheSize);
 
         // this is the recommended way to increase parallelism in RocksDb
         // note that the current implementation of setIncreaseParallelism affects the number
@@ -48,8 +46,8 @@ internal class RocksDbContext : IDisposable
 
         _tableConfig = new BlockBasedTableOptions();
         _tableConfig.SetBlockCache(_cache);
-        _tableConfig.SetBlockSize(BlockSize);
-        _tableConfig.SetCacheIndexAndFilterBlocks(true);
+        _tableConfig.SetBlockSize((ulong)options.Value.BlockSize);
+        _tableConfig.SetCacheIndexAndFilterBlocks(options.Value.CacheIndexAndFilterBlocks);
 
         var filter = BloomFilterPolicy.Create();
         _tableConfig.SetFilterPolicy(filter);
