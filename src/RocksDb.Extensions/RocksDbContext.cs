@@ -9,6 +9,7 @@ internal class RocksDbContext : IDisposable
     private readonly Dictionary<string, MergeOperatorConfig> _mergeOperators;
     private readonly Cache _cache;
     private readonly BlockBasedTableOptions _tableConfig;
+    private readonly Action<ColumnFamilyOptions>? _configureColumnFamilyOptions;
     
     // ReSharper disable once CollectionNeverQueried.Local
     /// <summary>
@@ -44,6 +45,8 @@ internal class RocksDbContext : IDisposable
         dbOptions.SetUseDirectIoForFlushAndCompaction(options.Value.UseDirectIoForFlushAndCompaction);
         dbOptions.EnableStatistics();
 
+        options.Value.ConfigureDbOptions?.Invoke(dbOptions);
+
         _tableConfig = new BlockBasedTableOptions();
         _tableConfig.SetBlockCache(_cache);
         _tableConfig.SetBlockSize((ulong)options.Value.BlockSize);
@@ -52,10 +55,13 @@ internal class RocksDbContext : IDisposable
         var filter = BloomFilterPolicy.Create();
         _tableConfig.SetFilterPolicy(filter);
 
+        options.Value.ConfigureBlockBasedTableOptions?.Invoke(_tableConfig);
+
         _writeOptions = new WriteOptions();
         _writeOptions.DisableWal(1);
 
         _mergeOperators = options.Value.MergeOperators;
+        _configureColumnFamilyOptions = options.Value.ConfigureColumnFamilyOptions;
 
         var columnFamilies = CreateColumnFamilies(options.Value.ColumnFamilies);
 
@@ -100,6 +106,8 @@ internal class RocksDbContext : IDisposable
 
             cfOptions.SetMergeOperator(mergeOp);
         }
+
+        _configureColumnFamilyOptions?.Invoke(cfOptions);
 
         // Store the options to keep MergeOperatorRef (and its delegates) alive
         _columnFamilyOptions[columnFamilyName] = cfOptions;

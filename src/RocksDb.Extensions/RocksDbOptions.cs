@@ -1,3 +1,5 @@
+using RocksDbSharp;
+
 namespace RocksDb.Extensions;
 
 /// <summary>
@@ -127,4 +129,42 @@ public class RocksDbOptions
     /// </para>
     /// </remarks>
     public ulong BlockCacheSize { get; set; } = 64 * 1024 * 1024L;
+
+    /// <summary>
+    /// A delegate that is invoked with the <see cref="DbOptions"/> instance right after it has been
+    /// configured with the library defaults, allowing callers to override or extend them directly.
+    /// </summary>
+    /// <remarks>
+    /// This is an advanced, low-level escape hatch intended for scenarios not covered by the other
+    /// options on this class. Settings applied by RocksDb.Extensions before this delegate runs may be
+    /// overwritten. The API surface of <see cref="DbOptions"/> is not guaranteed to be stable across
+    /// RocksDbSharp versions.
+    /// </remarks>
+    public Action<DbOptions>? ConfigureDbOptions { get; set; }
+
+    /// <summary>
+    /// A delegate that is invoked with the <see cref="BlockBasedTableOptions"/> instance right after it
+    /// has been configured with the library defaults, allowing callers to override or extend them directly.
+    /// </summary>
+    /// <remarks>
+    /// This is an advanced, low-level escape hatch intended for scenarios not covered by the other
+    /// options on this class. Settings applied by RocksDb.Extensions before this delegate runs may be
+    /// overwritten. The API surface of <see cref="BlockBasedTableOptions"/> is not guaranteed to be
+    /// stable across RocksDbSharp versions.
+    /// </remarks>
+    public Action<BlockBasedTableOptions>? ConfigureBlockBasedTableOptions { get; set; }
+
+    /// <summary>
+    /// A delegate that is invoked with the <see cref="ColumnFamilyOptions"/> instance for every column
+    /// family right after it has been configured with the library defaults, allowing callers to override
+    /// or extend them directly.
+    /// </summary>
+    /// <remarks>
+    /// This is an advanced, low-level escape hatch intended for scenarios not covered by the other
+    /// options on this class. Settings applied by RocksDb.Extensions before this delegate runs may be
+    /// overwritten, and calling <c>SetMergeOperator</c> here will replace any merge operator registered
+    /// via <c>AddMergeableStore</c>. The API surface of <see cref="ColumnFamilyOptions"/> is not
+    /// guaranteed to be stable across RocksDbSharp versions.
+    /// </remarks>
+    public Action<ColumnFamilyOptions>? ConfigureColumnFamilyOptions { get; set; }
 }
